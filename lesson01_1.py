@@ -16,8 +16,10 @@ from threading import Thread
 from ipaddress import ip_address
 import socket
 
+result = {'Доступные узлы': '', 'Недоступные узлы': ''}
 
-def ping(host, ipv4, ip_check):
+
+def ping(host, ipv4, result):
     """
     Проверка доступности хостов
     :param host: имя проверяемого хоста
@@ -28,9 +30,19 @@ def ping(host, ipv4, ip_check):
     response = subprocess.Popen(["ping", param, '1', '-w', '1', str(ipv4)],
                                 stdout=subprocess.PIPE)
     if response.wait() == 0:
-        print(f"{host}({ipv4}) - {ip_check}, узел доступен")
+        if str(host) != str(ipv4):
+            print(f"{host}({ipv4}) - узел доступен")
+            result['Доступные узлы'] += f"{host}({ipv4})\n"
+        else:
+            print(f"{host} - узел доступен")
+            result['Доступные узлы'] += f"{host}\n"
     else:
-        print(f"{host}({ipv4}) - {ip_check}, узел не доступен")
+        if str(host) != str(ipv4):
+            print(f"{host}({ipv4}) - узел не доступен")
+            result['Недоступные узлы'] += f"{host}({ipv4})\n"
+        else:
+            print(f"{host} - узел не доступен")
+            result['Недоступные узлы'] += f"{host}\n"
 
 
 def host_ping(hosts_list):
@@ -47,11 +59,11 @@ def host_ping(hosts_list):
             continue
         else:
             # print(f'{host} - корректный ip адрес')
-            ip_check = f'корректный ip адрес'
 
-            thread = Thread(target=ping, args=(host, ipv4, ip_check), daemon=True)
+            thread = Thread(target=ping, args=(host, ipv4, result), daemon=True)
             thread.start()
             thread.join()
+    return result
 
 
 if __name__ == '__main__':
@@ -60,6 +72,6 @@ if __name__ == '__main__':
                   '0.0.0.1', '0.0.0.2', '0.0.0.3', '0.0.0.4', '0.0.0.5',
                   '0.0.0.6', '0.0.0.7', '0.0.0.8', '0.0.0.9', '0.0.1.0']
     start = time.time()
-    host_ping(hosts_list)
+    print(host_ping(hosts_list))
     end = time.time()
     print(f'total time: {int(end - start)}')
