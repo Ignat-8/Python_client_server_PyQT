@@ -27,7 +27,7 @@ def ping(host, ipv4, result):
     :param ip_check: результат проверки на корректность ip адреса
     """
     param = '-n' if platform.system().lower() == 'windows' else '-c'
-    response = subprocess.Popen(["ping", param, '1', '-w', '1', str(ipv4)],
+    response = subprocess.Popen(["ping", param, '10', '-w', '1', str(ipv4)],
                                 stdout=subprocess.PIPE)
     if response.wait() == 0:
         if str(host) != str(ipv4):
@@ -50,6 +50,7 @@ def host_ping(hosts_list):
     Проверка доступности хостов
     :param hosts_list: список хостов
     """
+    threads = []
     for host in hosts_list:  
         try:  # проверяем, является ли значение ip-адресом
             ipv4 = socket.gethostbyname(host)
@@ -61,8 +62,13 @@ def host_ping(hosts_list):
             # print(f'{host} - корректный ip адрес')
 
             thread = Thread(target=ping, args=(host, ipv4, result), daemon=True)
+            threads.append(thread)
             thread.start()
-            thread.join()
+            print('start thread')
+            
+    print('join threads')
+    for thread in threads:
+        thread.join()
     return result
 
 
