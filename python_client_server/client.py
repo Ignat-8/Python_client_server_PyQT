@@ -5,15 +5,17 @@ print("загружаем модули...")
 import sys
 import json
 import time
-from socket import socket, AF_INET, SOCK_STREAM
+# from socket import socket, AF_INET, SOCK_STREAM
+import socket
 import logging
 from threading import Thread
 from unittest import expectedFailure
 import logs.conf_client_log
 import common.settings as cmnset
-import common.utils as cmnutils
+from common.utils import get_message, send_message
 from common.decors import log
 import common.errors as my_err
+from metaclasses import ClientMaker
 
 
 # Инициализация клиентского логера
@@ -22,7 +24,7 @@ CLIENT_LOGGER = logging.getLogger('client')
 
 # Класс формирования и отправки сообщений на сервер 
 # и взаимодействия с пользователем.
-class ClientSender(Thread):
+class ClientSender(Thread, metaclass=ClientMaker):
     def __init__(self, CLIENT_SOCK, user_name='Guest'):
         self.user_name = user_name
         self.CLIENT_SOCK = CLIENT_SOCK
@@ -73,7 +75,7 @@ class ClientSender(Thread):
                                                     destination=to_user)
                 CLIENT_LOGGER.debug(f'Сформирован словарь сообщения: {message_send}')
                 try:
-                    cmnutils.send_message(self.CLIENT_SOCK, message_send)
+                    send_message(self.CLIENT_SOCK, message_send)
                     CLIENT_LOGGER.info(f'Отправлено сообщение для пользователя {to_user}')
                     print(f'Отправлено сообщение для пользователя {to_user}')
                     # ждем ответ от сервера
@@ -86,7 +88,7 @@ class ClientSender(Thread):
                 self.print_help()
             elif command == 'exit':
                 message_exit = self.create_message(self.user_name, action='exit')
-                cmnutils.send_message(self.CLIENT_SOCK, message_exit)
+                send_message(self.CLIENT_SOCK, message_exit)
                 print('Завершение соединения.')
                 CLIENT_LOGGER.info('Завершение работы по команде пользователя.')
                 # Задержка неоходима, чтобы успело уйти сообщение о выходе
@@ -99,7 +101,7 @@ class ClientSender(Thread):
 
 # Класс-приёмник сообщений с сервера. 
 # Принимает сообщения, выводит в консоль.
-class ClientReader(Thread):
+class ClientReader(Thread, metaclass=ClientMaker):
     def __init__(self, CLIENT_SOCK, user_name='Guest'):
         self.user_name = user_name
         self.CLIENT_SOCK = CLIENT_SOCK
@@ -131,7 +133,7 @@ class ClientReader(Thread):
         поступающих с сервера"""
         while True:
             try:
-                message = cmnutils.get_message(self.CLIENT_SOCK)
+                message = get_message(self.CLIENT_SOCK)
                 if 'action' in message and message['action'] == 'message' \
                         and 'destination' in message and 'text' in message \
                         and message['destination'] == self.user_name:
@@ -168,8 +170,8 @@ def register_on_server(user_name, CLIENT_SOCK, server_address, server_port):
                                         action='presence', 
                                         text='', 
                                         destination='')
-        cmnutils.send_message(CLIENT_SOCK, message_to_server)
-        server_answer = ClientReader.process_ans(cmnutils.get_message(CLIENT_SOCK))
+        send_message(CLIENT_SOCK, message_to_server)
+        server_answer = ClientReader.process_ans(get_message(CLIENT_SOCK))
 
     except json.JSONDecodeError:
         CLIENT_LOGGER.error('Не удалось декодировать полученную Json строку.')
@@ -234,7 +236,7 @@ def main():
     # Приветственное сообщение
     print(f'Консольный месседжер. Клиентский модуль. Имя пользователя: {user_name}')
 
-    with socket(AF_INET, SOCK_STREAM) as CLIENT_SOCK:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as CLIENT_SOCK:
         CLIENT_SOCK.connect((server_address, server_port))
         # регистрируемся на сервере
         user_name, server_answer = register_on_server(user_name, CLIENT_SOCK, server_address, server_port)

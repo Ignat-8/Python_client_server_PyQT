@@ -1,6 +1,7 @@
 """ Программа сервера для получения приветствия от клиента и отправки ответа """
 import sys
-from socket import socket, AF_INET, SOCK_STREAM, SOL_SOCKET, SO_REUSEADDR
+# from socket import socket, AF_INET, SOCK_STREAM, SOL_SOCKET, SO_REUSEADDR
+import socket
 from select import select
 import logging
 from urllib import response
@@ -8,13 +9,31 @@ import logs.conf_server_log
 import common.settings as cmnset
 import common.utils as cmnutils
 from common.decors import log
+from metaclasses import ServerMaker
 
 
 # Инициализация серверного логера
 SERVER_LOGGER = logging.getLogger('server')
 
-#==============================================================
-class Server:
+
+class PortVerifi:
+    def __set__(self, instance, value):
+        if value < 1024 and value > 65535:
+            SERVER_LOGGER.error(f'Номер порта за пределами диапазона 1024-65535')
+            print(f'Ошибка: номер порта за пределами диапазона 1024-65535')
+            sys.exit(1)
+        else:
+            instance.__dict__[self.name] = value
+
+    def __set_name__(self, owner, name):
+        # owner - <class '__main__.Server'>
+        # name - port
+        self.name = name
+
+
+class Server(metaclass=ServerMaker):
+    port = PortVerifi()
+
     def __init__(self, listen_address, listen_port):
         # Параметры подключения
         self.addr = listen_address
@@ -28,8 +47,9 @@ class Server:
     def init_socket(self):
         SERVER_LOGGER.info(f'Готовим сокет')
         # готовим сокет
-        SERV_SOCK = socket(AF_INET, SOCK_STREAM)
-        SERV_SOCK.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+        SERV_SOCK = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # SERV_SOCK = socket(AF_INET, SOCK_STREAM)  # в таком варианте не проходит проверка в метаклассе
+        SERV_SOCK.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  
         SERV_SOCK.bind((self.addr, self.port))
         SERV_SOCK.settimeout(1)
         # Начинаем слушать сокет.
@@ -154,7 +174,6 @@ class Server:
             SERVER_LOGGER.error('сообщение от клента не правильное')
             return {'response': 400,
                     'error': 'bad request'}
-#==============================================================
 
 
 def main():
@@ -162,16 +181,11 @@ def main():
     try:
         if '-p' in sys.argv:
             listen_port = int(sys.argv[sys.argv.index('-p') + 1])
-            if listen_port < 1024 and listen_port > 65535:
-                raise ValueError
         else:
             SERVER_LOGGER.debug('Используется порт по умолчанию %d', cmnset.DEFAULT_PORT)
             listen_port = cmnset.DEFAULT_PORT
     except IndexError:
         SERVER_LOGGER.error(f'После параметра -\'p\' необходимо указать номер порта.')
-        sys.exit(1)
-    except ValueError:
-        SERVER_LOGGER.error(f'Номер порта за пределами диапазона 1024-65535')
         sys.exit(1)
 
     try:
