@@ -42,19 +42,12 @@ class Server(Thread, metaclass=ServerMaker):
         self.port = listen_port
          # База данных сервера
         self.database = database
-
-class Server(metaclass=ServerMaker):
-    port = PortVerifi()
-
-    def __init__(self, listen_address, listen_port):
-        # Параметры подключения
-        self.addr = listen_address
-        self.port = listen_port
         # список подключенных клиентов
         self.clients = []
         # список зарегистрированных пользователей и их сообщения
         self.messages = dict()
         # messages = {account_name:{'socket': client, 'message': message}}
+
         # Конструктор предка
         super().__init__()
 
@@ -105,7 +98,6 @@ class Server(metaclass=ServerMaker):
                         for key in self.messages.keys():
                             if self.messages[key]['socket'] == client_read:
                                 user_name_delete = key
-
                         # удаляем клиента из активных
                         if user_name_delete:
                             del self.messages[user_name_delete]
@@ -172,11 +164,13 @@ class Server(metaclass=ServerMaker):
                                 'error': 'Имя пользователя уже занято'}
                     cmnutils.send_message(client, response)
                     return response
+            
             # Отправка сообщения другому пользователю
             if message['action'] == 'message' \
                     and 'text' in message \
                     and 'destination' in message \
                     and message['destination']:
+
                 # если получатель активен, то запоминаем сообщение для отправки
                 if client == self.messages[message['user']['account_name']]['socket']:
                     self.messages[message['user']['account_name']]['message'] = message
@@ -203,7 +197,6 @@ class Server(metaclass=ServerMaker):
                     'error': 'bad request'}
 
 
-
 def print_help():
     print('Поддерживаемые комманды:')
     print('users - список известных пользователей')
@@ -212,7 +205,7 @@ def print_help():
     print('exit - завершение работы сервера.')
     print('help - вывод справки по поддерживаемым командам')
 
-    
+
 def main():
     SERVER_LOGGER.info(f'Определяем параметры сервера')
     try:
