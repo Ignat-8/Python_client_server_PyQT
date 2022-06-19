@@ -13,7 +13,6 @@ from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
 from server_gui import MainWindow, LoginHistoryWindow, MessageHistoryWindow, ConfigWindow, \
                         gui_create_model, create_stat_login, create_stat_message
-
 import common.settings as cmnset
 import common.utils as cmnutils
 from common.decors import log
@@ -231,7 +230,7 @@ class Server(Thread, metaclass=ServerMaker):
                     response = {'response': 400, 'error': 'такого пользователя нет'}
                 cmnutils.send_message(client, response)
                 return response
-
+              
             # выход клиента с сервера
             if message['action'] == 'exit':
                 self.clients.remove(client)
@@ -258,7 +257,7 @@ def print_help():
     print('exit      - завершение работы сервера.')
     print('help      - вывод справки по поддерживаемым командам')
     print(50*'=')
-
+    
 
 def main():
     SERVER_LOGGER.info(f'Определяем параметры сервера')

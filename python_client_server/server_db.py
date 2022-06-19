@@ -4,6 +4,7 @@ from sqlalchemy.orm import sessionmaker
 import datetime, os
 from pprint import pprint
 
+
 class ServerDB:
     Base = declarative_base()
 
@@ -163,7 +164,7 @@ class ServerDB:
         if username:
             query = query.filter(self.AllUsers.login == username)
         return query.all()
-
+      
     # Функция возвращает количество переданных и полученных сообщений
     def message_history(self):
         query = self.session.query(
