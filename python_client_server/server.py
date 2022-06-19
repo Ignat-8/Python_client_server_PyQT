@@ -13,7 +13,6 @@ from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
 from server_gui import MainWindow, LoginHistoryWindow, MessageHistoryWindow, ConfigWindow, \
                         gui_create_model, create_stat_login, create_stat_message
-
 import common.settings as cmnset
 import common.utils as cmnutils
 from common.decors import log
