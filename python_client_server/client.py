@@ -16,6 +16,7 @@ from common.utils import get_message, send_message
 from common.decors import log
 import common.errors as my_err
 from metaclasses import ClientMaker
+from client_db import ClientDB
 
 
 # Инициализация клиентского логера
@@ -28,6 +29,7 @@ class ClientSender(Thread, metaclass=ClientMaker):
     def __init__(self, CLIENT_SOCK, user_name='Guest'):
         self.user_name = user_name
         self.CLIENT_SOCK = CLIENT_SOCK
+        # self.database = database
         super().__init__()
 
     @staticmethod
@@ -41,7 +43,7 @@ class ClientSender(Thread, metaclass=ClientMaker):
                 'account_name': user_name,
                 },
         }
-        if text and destination:
+        if text or destination:
             message['text'] = text
             message['destination'] = destination
 
@@ -53,6 +55,10 @@ class ClientSender(Thread, metaclass=ClientMaker):
         """Функция выводящяя справку по использованию"""
         print('Поддерживаемые команды:')
         print('message - отправить сообщение. Кому и текст будет запрошены отдельно.')
+        print('add_contact - добавить пользователя в список контактов')
+        print('del_contact - удалить пользователя из списка контактов')
+        print('get_contact - вывести список контактов')
+        print('get_history - вывести историю переписки')
         print('help - вывести подсказки по командам')
         print('exit - выход из программы')
     
@@ -84,6 +90,47 @@ class ClientSender(Thread, metaclass=ClientMaker):
                     print('Потеряно соединение с сервером:\n', e)
                     CLIENT_LOGGER.critical('Потеряно соединение с сервером.')
                     sys.exit(1)
+
+            elif command == 'add_contact':
+                contact = ''
+                while not contact:
+                    contact = input('Введите имя пользователя для добавления:')
+                    if contact == self.user_name:
+                        print('Нельзя самого себя добавить в контакты')
+                        contact = ''
+
+                message_send = self.create_message(self.user_name,
+                                                    action='add_contact', 
+                                                    destination=contact)
+                send_message(self.CLIENT_SOCK, message_send)
+                time.sleep(1)
+                # self.database.add_contact(contact)
+
+            elif command == 'del_contact':
+                contact = ''
+                while not contact:
+                    contact = input('Введите имя пользователя для удаления:')
+                    if contact == self.user_name:
+                        print('Нельзя самого себя удалить из контактов')
+                        contact = ''
+
+                message_send = self.create_message(self.user_name,
+                                                    action='del_contact', 
+                                                    destination=contact)
+                send_message(self.CLIENT_SOCK, message_send)
+                time.sleep(1)
+                # self.database.del_contact(contact)
+
+            elif command == 'get_contacts':
+                message_send = self.create_message(self.user_name,
+                                                    action='get_contacts')
+                send_message(self.CLIENT_SOCK, message_send)
+                time.sleep(1)
+                # self.database.get_contacts(contact)
+                
+            elif command == 'get_history':
+                contact = input('Введите имя пользователя или оставьте поле пустым:')
+                self.database.get_history(contact)
             elif command == 'help':
                 self.print_help()
             elif command == 'exit':
@@ -143,8 +190,16 @@ class ClientReader(Thread, metaclass=ClientMaker):
                     CLIENT_LOGGER.info(f"Получено сообщение от пользователя {message['user']['account_name']}:"
                                         f"\n{message['text']}")
 
-                # 'Получатель с таким имененм не активен'
+                # 'Получатель с таким именем не активен'
                 if 'response' in message and message['response'] == 301:
+                    print(message['error'])
+                
+                #
+                if 'response' in message and message['response'] == 200:
+                    print(message['text'])
+
+                #
+                if 'response' in message and message['response'] == 400:
                     print(message['error'])
 
             except (my_err.NonDictError, my_err.NonStrError, my_err.NonBytesError):
