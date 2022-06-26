@@ -1,11 +1,9 @@
 """ Программа сервера для получения приветствия от клиента и отправки ответа """
-import sys, os, time
-# from socket import socket, AF_INET, SOCK_STREAM, SOL_SOCKET, SO_REUSEADDR
+import sys, os
 import socket
 from select import select
 import logging
 from urllib import response
-import logs.conf_server_log
 from threading import Thread
 from configparser import ConfigParser
 from PyQt5.QtWidgets import QApplication, QMessageBox
@@ -15,7 +13,6 @@ from server_gui import MainWindow, LoginHistoryWindow, MessageHistoryWindow, Con
                         gui_create_model, create_stat_login, create_stat_message
 import common.settings as cmnset
 import common.utils as cmnutils
-from common.decors import log
 from metaclasses import ServerMaker
 from server_db import ServerDB
 

@@ -1,9 +1,9 @@
-from email.policy import default
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import datetime, os
 from pprint import pprint
+
 
 class ServerDB:
     Base = declarative_base()
