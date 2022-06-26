@@ -9,6 +9,7 @@ from PyQt5.QtCore import Qt
 # GUI - Создание таблицы QModel, для отображения в окне программы.
 def gui_create_model(database):
     list_users = database.active_users_list()
+    # print('!!!!!! list_users =', list_users)
     list_table = QStandardItemModel()
     list_table.setHorizontalHeaderLabels(['Имя Клиента', 'IP Адрес', 'Порт', 'Время подключения'])
     for row in list_users:

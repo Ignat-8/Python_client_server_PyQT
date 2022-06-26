@@ -2,7 +2,7 @@ import logging
 
 
 # максимальная длина сообщения в байтах
-MAX_PACKAGE_LENGTH = 1024
+MAX_PACKAGE_LENGTH = 10240
 
 # кодировка проекта
 ENCODING = 'utf-8'

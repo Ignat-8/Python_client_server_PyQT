@@ -1,18 +1,14 @@
 """ Программа клиента для получения и отправки сообщений """
 print("загружаем модули...")
-import sys
-import json
-import time
-import logging
-from threading import Thread
-from unittest import expectedFailure
-import logs.conf_client_log
-import common.settings as cmnset
-from common.utils import get_message, send_message
-from common.decors import log
-import common.errors as my_err
-from metaclasses import ClientMaker
+import sys, logging
+from PyQt5.QtWidgets import QApplication
 from client_db import ClientDB
+from client_socket import ClientSocket
+from win_main import ClientMainWindow
+
+sys.path.append('../')
+import common.settings as cmnset
+import common.errors as my_err
 
 
 # Инициализация клиентского логера
@@ -35,9 +31,9 @@ def main():
     except IndexError:
         server_address = cmnset.DEFAULT_ADDRESS
         server_port = cmnset.DEFAULT_PORT
-        CLIENT_LOGGER.info('Использование параметров по умолчанию - DEFAULT_ADDRESS и DEFAULT_PORT')
+        logger.info('Использование параметров по умолчанию - DEFAULT_ADDRESS и DEFAULT_PORT')
     except ValueError:
-        CLIENT_LOGGER.error('Номер порта должен быть в диапазоне от 1024 до 65535')
+        logger.error('Номер порта должен быть в диапазоне от 1024 до 65535')
         sys.exit(1)
 
     try:
@@ -48,46 +44,42 @@ def main():
         if '--name' in sys.argv:
             user_name = sys.argv[sys.argv.index('--name') + 1]
     except ValueError:
-        CLIENT_LOGGER.error('Указано не верное значение аргумента')
+        logger.error('Указано не верное значение аргумента')
         print("Указано не верное значение аргумента")
         sys.exit(1)
     
     # Приветственное сообщение
     print(f'Консольный месседжер. Клиентский модуль. Имя пользователя: {user_name}')
 
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as CLIENT_SOCK:
-        CLIENT_SOCK.connect((server_address, server_port))
-        # регистрируемся на сервере
-        user_name, server_answer = register_on_server(user_name, CLIENT_SOCK, server_address, server_port)
+    # Создаём клиентокое приложение
+    client_app = QApplication(sys.argv)
 
-        CLIENT_LOGGER.info(f'Установлено соединение с сервером для пользователя {user_name}.\n \
-                                Ответ сервера: {server_answer}')
-        print(f'Установлено соединение с сервером для пользователя {user_name}.\n \
-                                Ответ сервера: {server_answer}')
+    # Записываем логи
+    logger.info(
+        f'Запущен клиент с парамертами: адрес сервера: {server_address} , '
+        f'порт: {server_port}, имя пользователя: {user_name}')
 
-        # Создаём объект базы данных
-        database = ClientDB(user_name)
+    # Создаём объект базы данных
+    database = ClientDB(user_name)
 
-        # запускаем клиентский процесс приёма сообщений
-        receiver = ClientReader(CLIENT_SOCK, user_name)
-        receiver.daemon = True
-        receiver.start()
+    # Создаём объект - транспорт и запускаем транспортный поток
+    try:
+        transport = ClientSocket(server_port, server_address, database, user_name)
+    except my_err.ServerError as error:
+        print(error.text)
+        exit(1)
+    transport.setDaemon(True)
+    transport.start()
 
-        # затем запускаем отправку сообщений и взаимодействие с пользователем.
-        user_interface = ClientSender(CLIENT_SOCK, user_name)
-        user_interface.daemon = True
-        user_interface.start()
-        CLIENT_LOGGER.debug('Запущены процессы')
+    # Создаём GUI
+    main_window = ClientMainWindow(database, transport)
+    main_window.make_connection(transport)
+    main_window.setWindowTitle(f'Чат Программа alpha release - {user_name}')
+    client_app.exec_()
 
-        # Watchdog основной цикл, если один из потоков завершён,
-        # то значит или потеряно соединение или пользователь
-        # ввёл exit. Поскольку все события обработываются в потоках,
-        # достаточно просто завершить цикл.
-        while True:
-            time.sleep(1)
-            if receiver.is_alive() and user_interface.is_alive():
-                continue
-            break
+    # Раз графическая оболочка закрылась, закрываем транспорт
+    transport.socket_shutdown()
+    transport.join()
 
 
 if __name__ == '__main__':

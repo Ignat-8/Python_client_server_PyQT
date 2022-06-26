@@ -1,9 +1,5 @@
 from socket import socket, AF_INET, SOCK_STREAM
-import sys
-import time
-import logging
-import json
-import threading
+import sys, os, time, logging, json, threading
 from PyQt5.QtCore import pyqtSignal, QObject
 
 sys.path.append('../')
@@ -31,10 +27,8 @@ class ClientSocket(threading.Thread, QObject):
         self.database = database  # Класс База данных - работа с базой
         self.username = username  # Имя пользователя
         self.socket = None  # Сокет для работы с сервером
-        
         # Устанавливаем соединение:
         self.connection_init(port, ip_address)
-
         # Обновляем таблицы известных пользователей и контактов
         try:
             self.user_list_update()
@@ -52,15 +46,16 @@ class ClientSocket(threading.Thread, QObject):
 
     def connection_init(self, port, ip):
         """ Инициализирует сокет и регистрирует на сервере """
-
+        print(50*'=' + ' client_socket.connection_init')
+        print('Инициализируем сокет')
         self.socket = socket(AF_INET, SOCK_STREAM)
         # Таймаут необходим для освобождения сокета.
         self.socket.settimeout(5)
-
         # Соединяемся, 5 попыток соединения, флаг успеха ставим в True если удалось
         connected = False
         for i in range(5):
             logger.info(f'Попытка подключения №{i + 1}')
+            print(f'Попытка подключения №{i + 1}')
             try:
                 self.socket.connect((ip, port))
             except (OSError, ConnectionRefusedError):
@@ -73,15 +68,15 @@ class ClientSocket(threading.Thread, QObject):
         # Если соединится не удалось - исключение
         if not connected:
             logger.critical('Не удалось установить соединение с сервером')
+            print('Не удалось установить соединение с сервером')
             raise ServerError('Не удалось установить соединение с сервером')
 
         logger.debug('Установлено соединение с сервером')
         print('Установлено соединение с сервером')
 
-        # Посылаем серверу приветственное сообщение и получаем ответ,
-        # что всё нормально или ловим исключение.
-        try:
+        try: # регистрируемся на сервере
             with socket_lock:
+                print("сокет освободился регистрируемся на сервере")
                 req = self.create_message()
                 send_message(self.socket, req)
                 self.process_server_ans(get_message(self.socket))
@@ -115,6 +110,7 @@ class ClientSocket(threading.Thread, QObject):
             Генерирует исключение при ошибке.
             """
         logger.debug(f'Разбор сообщения от сервера: {message}')
+        print(50*'=' + ' client_socket.process_server_ans')
         print(f'Разбор сообщения от сервера: {message}')
 
         # Если это подтверждение чего-либо
@@ -128,8 +124,8 @@ class ClientSocket(threading.Thread, QObject):
                 raise ServerError(f"{message['error']}")
             else:
                 logger.debug(f"Принят неизвестный код подтверждения {message['response']}")
-        else:
-            raise ReqFieldMissingError('response')
+        # else:
+        #     raise ReqFieldMissingError('response')
 
         # Если это сообщение от пользователя добавляем в базу, даём сигнал о новом сообщении
         if 'action' in message \
@@ -141,8 +137,8 @@ class ClientSocket(threading.Thread, QObject):
             sender = message['user']['account_name']
             logger.debug(f"Получено сообщение от пользователя {sender}:"
                          f"{message['text']}")
-            self.database.save_message(sender, 'in', message['text'])
-            self.new_message.emit(message['text'])
+            self.database.save_message(sender, message['text'], 'in')
+            self.new_message.emit(sender)
         
     # Функция, обновляющая контакт - лист с сервера
     def contacts_list_update(self):
@@ -174,12 +170,38 @@ class ClientSocket(threading.Thread, QObject):
         else:
             logger.error('Не удалось обновить список известных пользователей.')
 
+    # Функция обновления переписки cо всеми пользователями
+    # список берем с сервера
+    def update_messages(self):
+        logger.debug(f'Обновление переписки для пользователя {self.username}')
+        print(50*'=' + ' client_socket.update_message')
+        print(f'Обновление переписки для пользователя {self.username}')
+        req = self.create_message(action='get_messages')
+        print('message to server:', req)
+        with socket_lock:
+            print('сокет освободился, отправляем запрос на сервер')
+            send_message(self.socket, req)
+            time.sleep(0.5)
+            ans = get_message(self.socket)
+            print('unswer from server:', ans)
+
+        if 'response' in ans and ans['response'] == 200:
+            if ans['text']: # если список не пустой
+                self.database.update_messages(ans['text'])
+        else:
+            logger.error('Не удалось обновить переписку пользователей.')
+            print('Не удалось обновить переписку пользователей.')
+
     def add_contact(self, contact):
         """ Добавляет новый контакт """
         logger.debug(f'Добавление контакта {contact}')
+        print(50*'=' + ' client_socket.add_contact')
+        print(f'Добавление контакта {contact}')
         with socket_lock:
+            print('сокет освободился, отправляем запрос на сервер')
             req = self.create_message(action='add_contact', 
                                         destination=contact)
+            print('request =', req)
             send_message(self.socket, req)
             time.sleep(0.5)
             self.process_server_ans(get_message(self.socket))
@@ -215,12 +237,19 @@ class ClientSocket(threading.Thread, QObject):
                                         text=text,
                                         destination=destination)
         logger.debug(f'Сформирован словарь сообщения: {message}')
-
+        print(50*'=' + ' client_socket.send_message')
+        print(f'Сформирован словарь сообщения: {message}')
         # Необходимо дождаться освобождения сокета для отправки сообщения
         with socket_lock:
+            print('сокет освободился, отправляем сообщение')
             send_message(self.socket, message)
-            self.process_server_ans(get_message(self.socket))
+            time.sleep(0.5)
+            print('обрабатываем сообщение от сервера')
+            ans = get_message(self.socket)
+            print('получен ответ ', ans)
+            self.process_server_ans(ans)
             logger.info(f'Отправлено сообщение для пользователя {destination}')
+            print(f'Отправлено сообщение для пользователя {destination}')
 
     def run(self):
         logger.debug('Запущен процесс - приёмник сообщений с сервера.')
@@ -256,6 +285,14 @@ class ClientSocket(threading.Thread, QObject):
 
 
 if __name__ == '__main__':
+    username = 'test_1'
+    ip_address = '127.0.0.1'
+    port = 7777
+
     from client_db import ClientDB
-    database = ClientDB('test1')
-    ClientSocket(7777, '127.0.0.1', database, 'test1')
+    database = ClientDB(username)
+    ClientSocket(port, ip_address, database, username)
+
+    # из БД сервера нужно получить список сообщений между двумя пользователями
+    # в виде списка списков
+    # [(message_type, text, date), ()]

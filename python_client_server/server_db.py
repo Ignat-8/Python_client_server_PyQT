@@ -17,8 +17,10 @@ class ServerDB:
         is_active = Column(Integer, default=0)
         last_conn = Column(DateTime)
 
-        def __init__(self, login):
+        def __init__(self, login, ip, port):
             self.login = login
+            self.ip = ip
+            self.port = port
             self.is_active = 1
             self.last_conn = datetime.datetime.now()
     
@@ -97,12 +99,14 @@ class ServerDB:
         # Если имя пользователя уже присутствует в таблице, обновляем время последнего входа
         if result.count():
             user = result.first()
+            user.ip = ip_address
+            user.port = port
             user.is_active = 1
             user.last_conn = datetime.datetime.now()
         # Если нет, то создаём нового пользователя
         else:
             # Создаем экземпляр класса self.AllUsers, через который передаем данные в таблицу
-            user = self.AllUsers(username)
+            user = self.AllUsers(username, ip_address, port)
             self.session.add(user)
             # Коммит здесь нужен, чтобы в db записался ID
             self.session.commit()
@@ -131,7 +135,7 @@ class ServerDB:
         query = self.session.query(self.AllUsers.login,
                                     self.AllUsers.ip,
                                     self.AllUsers.port,
-                                    self.AllUsers.is_active,
+                                    # self.AllUsers.is_active,
                                     self.AllUsers.last_conn) \
                             .filter_by(is_active=1)
         # Возвращаем список тюплов
@@ -180,29 +184,28 @@ class ServerDB:
         self.session.add(row)
         self.session.commit()
 
-    # Функция возвращает переписку между пользователями
-    def get_messages(self, sender, destination):
+    # Функция возвращает всю переписку пользователя
+    def get_messages(self, username):
         # Получаем ID пользователей
-        sender = self.session.query(self.AllUsers) \
-                                .filter_by(login=sender) \
+        user = self.session.query(self.AllUsers) \
+                                .filter_by(login=username) \
                                 .first()
-        destination = self.session.query(self.AllUsers) \
-                                    .filter_by(login=destination) \
-                                    .first()
         # список исходящих сообщений для sender
         req_1 = self.session.query(self.Messages) \
-                            .filter_by(sender=sender.id, destination=destination.id)
+                            .filter_by(sender=user.id)
         # список входящих сообщений для sender
         req_2 = self.session.query(self.Messages) \
-                            .filter_by(sender=destination.id, destination=sender.id)
+                            .filter_by(destination=user.id)
         # sender, destination, text, date
         messages = []
         for el in req_1.all():
-            messages.append(['out', el.destination, el.text, el.date])
+            # 2022-06-26 15:02:52
+            messages.append(('out', el.destination, el.text, el.date.strftime('%Y-%m-%d %H:%M:%S')))
 
         for el in req_2.all():
-            messages.append(['in', el.sender, el.text, el.date])
-        print(messages)
+            messages.append(('in', el.sender, el.text, el.date.strftime('%Y-%m-%d %H:%M:%S')))
+        # print(messages)
+        return messages
 
     # Функция добавляет контакт для пользователя.
     def add_contact(self, login, contact):
@@ -270,7 +273,7 @@ class ServerDB:
 
 if __name__ == '__main__':
     path = os.path.dirname(os.path.abspath(__file__))
-    db = ServerDB(os.path.join(path, 'server_db.bd3'))
+    db = ServerDB(os.path.join(path, 'server_db.db3'))
 
     print(50*'=')
     print('login user test_1')

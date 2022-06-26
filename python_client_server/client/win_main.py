@@ -2,15 +2,12 @@ from PyQt5.QtWidgets import QMainWindow, qApp, QMessageBox, QApplication, QListV
 from PyQt5.QtGui import QStandardItemModel, QStandardItem, QBrush, QColor
 from PyQt5.QtCore import pyqtSlot, QEvent, Qt
 from PyQt5 import QtGui
-import sys
-import json
-import logging
+import sys, logging
 from win_main_code import Ui_MainClientWindow
 from win_contact_add import AddContactDialog
 from win_contact_del import DelContactDialog
 from client_db import ClientDB
 from client_socket import ClientSocket
-# from client.start_dialog import UserNameDialog
 from common.errors import ServerError
 
 
@@ -55,6 +52,7 @@ class ClientMainWindow(QMainWindow):
         self.ui.list_contacts.doubleClicked.connect(self.select_active_user)
 
         self.clients_list_update()
+        self.transport.update_messages()
         self.set_disabled_input()
         self.show()
 
@@ -205,13 +203,13 @@ class ClientMainWindow(QMainWindow):
     # Функция отправки сообщения пользователю.
     def send_message(self):
         # Текст в поле, проверяем что поле не пустое затем забирается сообщение и поле очищается
+        print(50*'=' + ' win_main.send_message')
         message_text = self.ui.text_message.toPlainText()
         self.ui.text_message.clear()
-        print('!!!!!!! message to send =', message_text)
-        print('!!!!!!! self.current_chat =', self.current_chat)
         if not message_text:
             return
         try:
+            print('попытка отправить сообщение')
             self.transport.send_message(self.current_chat, message_text)
         except ServerError as err:
             self.messages.critical(self, 'Ошибка', err.text)
@@ -226,11 +224,13 @@ class ClientMainWindow(QMainWindow):
         else:
             self.database.save_message(self.current_chat, message_text, 'out')
             logger.debug(f'Отправлено сообщение для {self.current_chat}: {message_text}')
+            print(f'Отправлено сообщение для {self.current_chat}: {message_text}')
             self.history_list_update()
 
     # Слот приёма нового сообщений
     @pyqtSlot(str)
     def message(self, sender):
+        print('sender =', sender)
         if sender == self.current_chat:
             self.history_list_update()
         else:
@@ -269,10 +269,15 @@ class ClientMainWindow(QMainWindow):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
+    username = 'test_1'
+    ip_address = '127.0.0.1'
+    port = 7777
+
     from client_db import ClientDB
-    database = ClientDB('test1')
+    database = ClientDB(username)
 
     from client_socket import ClientSocket
-    socket = ClientSocket(7777, '127.0.0.1', database, 'q1')
+    socket = ClientSocket(port, ip_address, database, username)
+
     window = ClientMainWindow(database, socket)
     sys.exit(app.exec_())

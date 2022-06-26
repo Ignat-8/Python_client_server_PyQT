@@ -140,7 +140,7 @@ class Server(Thread, metaclass=ServerMaker):
                                 self.messages[sender]['message']['text'] = ''
                         else:
                             cmnutils.send_message(self.messages[sender]['socket'], 
-                                                    {'response':300, 
+                                                    {'response':201, 
                                                     'error':'Получатель с таким имененм не активен'})
                             self.messages[sender]['message']['text'] = ''
     
@@ -186,12 +186,30 @@ class Server(Thread, metaclass=ServerMaker):
                     # messages = {account_name:{'socket': client, 'message': message}}
                     user_name = message['user']['account_name']
                     self.messages[user_name]['message'] = message
-                else:
-                    SERVER_LOGGER.error('Пользователь %s с сокетом %s не активен', 
-                                            message['user']['account_name'], client)
-                    response = {'response': 400,
-                            'error': 'Пользователь не активен'}
+                    response = {'response': 200,
+                                'text': 'сообщение поставлено в очередь отправки'}
+                    cmnutils.send_message(client, response)
                     return response
+                else:
+                    SERVER_LOGGER.error(f"Пользователь {message['user']['account_name']} с сокетом {client} не активен")
+                    print(f"Пользователь {message['user']['account_name']} с сокетом {client} не активен")
+                    response = {'response': 400,
+                                'error': 'Пользователь не активен'}
+                    cmnutils.send_message(client, response)
+                    return response
+
+            # Запрос переписки пользователя
+            if message['action'] == 'get_messages' \
+                    and message['user']['account_name']:
+                # логин пользователя, для которого выгружаем переписку
+                user_login = message['user']['account_name']
+                # формируем сообщение для отправки
+                response = {'response': 200}
+                response['text'] = self.database.get_messages(user_login)
+                print('!!!! get_messages:', response)
+                # отправляем сообщение
+                cmnutils.send_message(client, response)
+                return(response)
 
             # Запрос списка контактов для пользователя
             if message['action'] == 'get_contacts':
@@ -201,7 +219,7 @@ class Server(Thread, metaclass=ServerMaker):
                 cmnutils.send_message(client, response)
                 return(response)
 
-            # Запрос списка известных пользователей
+            # Запрос списка всех пользователей
             if message['action'] == 'get_userlist':
                 response = {'response': 200}
                 response['text'] = self.database.get_userlist()
@@ -218,11 +236,14 @@ class Server(Thread, metaclass=ServerMaker):
                 contact = message['destination']
                 
                 if self.database.add_contact(user_login, contact) == 1:
-                    response = {'response': 200, 'text': 'пользователь добавлен в контакты'}
+                    response = {'response': 200, 
+                                'text': 'пользователь добавлен в контакты'}
                 elif self.database.add_contact(user_login, contact) == 2:
-                    response = {'response': 400, 'error': 'такой контакт уже существует'}
+                    response = {'response': 200, 
+                                'text': 'такой контакт уже существует'}
                 elif self.database.add_contact(user_login, contact) == 0:
-                    response = {'response': 400, 'error': 'такого пользователя нет'}
+                    response = {'response': 400, 
+                                'error': 'такого пользователя нет'}
                 cmnutils.send_message(client, response)
                 return response
             
