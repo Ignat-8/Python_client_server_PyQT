@@ -13,7 +13,6 @@ from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
 from server_gui import MainWindow, LoginHistoryWindow, MessageHistoryWindow, ConfigWindow, \
                         gui_create_model, create_stat_login, create_stat_message
-
 import common.settings as cmnset
 import common.utils as cmnutils
 from common.decors import log
@@ -102,6 +101,7 @@ class Server(Thread, metaclass=ServerMaker):
                         print(f'Клиент {client_read} отключился от сервера.')
                         self.clients.remove(client_read)
                         # ищем имя клиента
+                        user_name_delete = ''
                         for key in self.messages.keys():
                             if self.messages[key]['socket'] == client_read:
                                 user_name_delete = key
@@ -140,7 +140,7 @@ class Server(Thread, metaclass=ServerMaker):
                                 self.messages[sender]['message']['text'] = ''
                         else:
                             cmnutils.send_message(self.messages[sender]['socket'], 
-                                                    {'response':301, 
+                                                    {'response':300, 
                                                     'error':'Получатель с таким имененм не активен'})
                             self.messages[sender]['message']['text'] = ''
     
@@ -167,7 +167,7 @@ class Server(Thread, metaclass=ServerMaker):
                     cmnutils.send_message(client, response)
                 else:
                     SERVER_LOGGER.error('Имя пользователя %s уже занято', message['user']['account_name'])
-                    response = {'response': 300,
+                    response = {'response': 400,
                                 'error': 'Имя пользователя уже занято'}
                     cmnutils.send_message(client, response)
                     return response
@@ -178,23 +178,34 @@ class Server(Thread, metaclass=ServerMaker):
                     and 'destination' in message \
                     and message['destination']:
 
+                # сохраняем сообщение в базе данных
+                self.database.process_message(message)
+
                 # если получатель активен, то запоминаем сообщение для отправки
                 if client == self.messages[message['user']['account_name']]['socket']:
-                    self.messages[message['user']['account_name']]['message'] = message
                     # messages = {account_name:{'socket': client, 'message': message}}
-                    self.database.process_message(message['user']['account_name'],
-                                                message['destination'])
+                    user_name = message['user']['account_name']
+                    self.messages[user_name]['message'] = message
                 else:
-                    SERVER_LOGGER.error('Пользователь %s с сокетом %s не зарегистрирован', message['user']['account_name'], client)
+                    SERVER_LOGGER.error('Пользователь %s с сокетом %s не активен', 
+                                            message['user']['account_name'], client)
                     response = {'response': 400,
                             'error': 'Пользователь не активен'}
                     return response
 
-            # Запрос списка контактов
+            # Запрос списка контактов для пользователя
             if message['action'] == 'get_contacts':
                 response = {'response': 200}
                 user_login = message['user']['account_name']
                 response['text'] = self.database.get_contacts(user_login)
+                cmnutils.send_message(client, response)
+                return(response)
+
+            # Запрос списка известных пользователей
+            if message['action'] == 'get_userlist':
+                response = {'response': 200}
+                response['text'] = self.database.get_userlist()
+                print(response)
                 cmnutils.send_message(client, response)
                 return(response)
 
@@ -209,7 +220,7 @@ class Server(Thread, metaclass=ServerMaker):
                 if self.database.add_contact(user_login, contact) == 1:
                     response = {'response': 200, 'text': 'пользователь добавлен в контакты'}
                 elif self.database.add_contact(user_login, contact) == 2:
-                    response = {'response': 200, 'text': 'такой контакт уже существует'}
+                    response = {'response': 400, 'error': 'такой контакт уже существует'}
                 elif self.database.add_contact(user_login, contact) == 0:
                     response = {'response': 400, 'error': 'такого пользователя нет'}
                 cmnutils.send_message(client, response)
@@ -226,7 +237,7 @@ class Server(Thread, metaclass=ServerMaker):
                 if self.database.del_contact(user_login, contact) == 1:
                     response = {'response': 200, 'text': 'пользователь удален из контактов'}
                 elif self.database.del_contact(user_login, contact) == 2:
-                    response = {'response': 200, 'text': 'такого контакта не существует'}
+                    response = {'response': 400, 'error': 'такого контакта не существует'}
                 elif self.database.del_contact(user_login, contact) == 0:
                     response = {'response': 400, 'error': 'такого пользователя нет'}
                 cmnutils.send_message(client, response)
