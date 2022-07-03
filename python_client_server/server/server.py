@@ -1,8 +1,6 @@
 """ Программа сервера для получения приветствия от клиента и отправки ответа """
-import sys, os
-import socket
+import sys, os, socket, logging
 from select import select
-import logging
 from urllib import response
 from threading import Thread
 from configparser import ConfigParser
