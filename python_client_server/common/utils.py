@@ -6,6 +6,7 @@ import common.errors as my_err
 
 @log
 def get_message(client):
+    # print(50*'=')
     # print(f'function get_message, client = {client}')
     encoded_response = client.recv(MAX_PACKAGE_LENGTH)
     # print(f'получено сообщение encoded_response = {encoded_response}')

@@ -1,7 +1,7 @@
 """ Программа сервера для получения приветствия от клиента и отправки ответа """
-import sys, os, socket, logging
+import sys, os, socket, logging, binascii, hmac
 from select import select
-from urllib import response
+# from urllib import response
 from threading import Thread
 from configparser import ConfigParser
 from PyQt5.QtWidgets import QApplication, QMessageBox
@@ -9,8 +9,10 @@ from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
 from server_gui import MainWindow, LoginHistoryWindow, MessageHistoryWindow, ConfigWindow, \
                         gui_create_model, create_stat_login, create_stat_message
+sys.path.append('../')
 import common.settings as cmnset
 import common.utils as cmnutils
+from common.decors import login_required
 from metaclasses import ServerMaker
 from server_db import ServerDB
 
@@ -34,7 +36,7 @@ class PortVerifi:
         self.name = name
 
 
-class Server(Thread, metaclass=ServerMaker):
+class MyServer(Thread, metaclass=ServerMaker):
     port = PortVerifi()
 
     def __init__(self, listen_address, listen_port, database):
@@ -45,7 +47,7 @@ class Server(Thread, metaclass=ServerMaker):
         self.database = database
         # список подключенных клиентов
         self.clients = []
-        # список зарегистрированных пользователей и их сообщения
+        # список активных пользователей и их сообщения
         self.messages = dict()
         # messages = {account_name:{'socket': client, 'message': message}}
 
@@ -125,6 +127,9 @@ class Server(Thread, metaclass=ServerMaker):
                                 self.messages[sender]['message']['text'] = ''
                                 SERVER_LOGGER.debug("Сообщение отправлено клиенту %s", \
                                                     self.messages[sender]['message']['destination'])
+                                cmnutils.send_message(self.messages[sender]['socket'], 
+                                                    {'response':200, 
+                                                    'text':'Сообщение отправлено'})
                             except:
                                 SERVER_LOGGER.error("Не удается отправить сообщение клиенту %s", \
                                                     self.messages[sender]['message']['destination'])
@@ -133,37 +138,75 @@ class Server(Thread, metaclass=ServerMaker):
 
                                 self.clients.remove(self.messages[recipient]['socket'])
                                 self.messages[sender]['message']['text'] = ''
+                                cmnutils.send_message(self.messages[sender]['socket'], 
+                                                    {'response':400, 
+                                                    'text':'Сообщение не отправлено'})
                         else:
                             cmnutils.send_message(self.messages[sender]['socket'], 
                                                     {'response':201, 
-                                                    'error':'Получатель с таким имененм не активен'})
+                                                    'text':'Получатель с таким именем не активен'})
                             self.messages[sender]['message']['text'] = ''
     
+    @login_required
     def process_client_message(self, message, client):
         SERVER_LOGGER.info(f'проверка сообщения от клента')
         if 'action' in message \
                 and 'time' in message \
                 and 'user' in message:
 
-            # регистрация пользователя
+            # авторизация и регистрация пользователя
             if message['action'] == 'presence':
-                # если такого имени еще не было
+                # если такого имени еще не было, 
+                # т.е. пользователь не активен или не зарегистрирован
                 if message['user']['account_name'] not in self.messages.keys():
-                    # messages = {account_name:{'socket': client, 'message': message}}
-                    self.messages[message['user']['account_name']] = {'socket': client}
-                    
-                    # добавляем клиента в базу данных
-                    username = message['user']['account_name']
-                    client_ip, client_port = client.getpeername()
-                    self.database.user_login(username, client_ip, client_port)
+                    # проводим авторизацию
+                    response = {'response': 511}
+                    random_str = binascii.hexlify(os.urandom(64))
+                    # В словарь байты нельзя, декодируем (json.dumps -> TypeError)
+                    response['data'] = random_str.decode('ascii')
+                    # Создаём хэш секретного ключа и связки с рандомной строкой
+                    secret_key = b'server-client secret_key'
+                    hash = hmac.new(secret_key, random_str, 'MD5')
+                    digest = hash.digest()
+                    try:  # Обмен с клиентом
+                        cmnutils.send_message(client, response)
+                        ans = cmnutils.get_message(client)
+                    except OSError as err:
+                        SERVER_LOGGER.debug('Error in auth, data:', exc_info=err)
+                        self.socket.close()
+                        return
 
-                    # отправляем сообщение клиенту
-                    response = {'response': 200}
-                    cmnutils.send_message(client, response)
+                    client_digest = binascii.a2b_base64(ans['data'])
+                    # Если ответ клиента корректный, то сохраняем его в список
+                    # пользователей.
+                    if 'response' in ans and ans['response'] == 511 and \
+                            hmac.compare_digest(digest, client_digest):
+
+                        # messages = {account_name:{'socket': client, 'message': message}}
+                        self.messages[message['user']['account_name']] = {'socket': client}
+                        
+                        # добавляем клиента в список активных
+                        username = message['user']['account_name']
+                        password = message['user']['password']
+                        pubkey = message['user']['public_key']
+                        client_ip, client_port = client.getpeername()
+                        login_success = self.database.user_login(username, password, pubkey, client_ip, client_port)
+                        if login_success:    
+                            response = {'response': 200}
+                        else:
+                            response = {'response': 400, 
+                                        'text': 'Не верное имя пользователя или пароль'}
+                        # отправляем сообщение клиенту
+                        cmnutils.send_message(client, response)
+                    else:
+                        response = {'response': 400, 
+                                    'text': 'Не успешная авторизация приложения'}
+                        # отправляем сообщение клиенту
+                        cmnutils.send_message(client, response)
                 else:
                     SERVER_LOGGER.error('Имя пользователя %s уже занято', message['user']['account_name'])
                     response = {'response': 400,
-                                'error': 'Имя пользователя уже занято'}
+                                'text': 'Имя пользователя уже занято'}
                     cmnutils.send_message(client, response)
                     return response
             
@@ -183,13 +226,13 @@ class Server(Thread, metaclass=ServerMaker):
                     self.messages[user_name]['message'] = message
                     response = {'response': 200,
                                 'text': 'сообщение поставлено в очередь отправки'}
-                    cmnutils.send_message(client, response)
+                    # cmnutils.send_message(client, response)
                     return response
                 else:
                     SERVER_LOGGER.error(f"Пользователь {message['user']['account_name']} с сокетом {client} не активен")
                     print(f"Пользователь {message['user']['account_name']} с сокетом {client} не активен")
                     response = {'response': 400,
-                                'error': 'Пользователь не активен'}
+                                'text': 'Пользователь не активен'}
                     cmnutils.send_message(client, response)
                     return response
 
@@ -238,7 +281,7 @@ class Server(Thread, metaclass=ServerMaker):
                                 'text': 'такой контакт уже существует'}
                 elif self.database.add_contact(user_login, contact) == 0:
                     response = {'response': 400, 
-                                'error': 'такого пользователя нет'}
+                                'text': 'такого пользователя нет'}
                 cmnutils.send_message(client, response)
                 return response
             
@@ -253,9 +296,9 @@ class Server(Thread, metaclass=ServerMaker):
                 if self.database.del_contact(user_login, contact) == 1:
                     response = {'response': 200, 'text': 'пользователь удален из контактов'}
                 elif self.database.del_contact(user_login, contact) == 2:
-                    response = {'response': 400, 'error': 'такого контакта не существует'}
+                    response = {'response': 400, 'text': 'такого контакта не существует'}
                 elif self.database.del_contact(user_login, contact) == 0:
-                    response = {'response': 400, 'error': 'такого пользователя нет'}
+                    response = {'response': 400, 'text': 'такого пользователя нет'}
                 cmnutils.send_message(client, response)
                 return response
 
@@ -272,7 +315,7 @@ class Server(Thread, metaclass=ServerMaker):
         else:
             SERVER_LOGGER.error('сообщение от клента не правильное')
             return {'response': 400,
-                    'error': 'bad request'}
+                    'text': 'bad request'}
 
 
 def print_help():
@@ -324,7 +367,7 @@ def main():
                     )
 
     # Создание экземпляра класса - сервера.
-    server = Server(listen_address, listen_port, database)
+    server = MyServer(listen_address, listen_port, database)
     server.daemon = True
     server.start()
 

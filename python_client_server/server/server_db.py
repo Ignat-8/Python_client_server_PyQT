@@ -1,3 +1,5 @@
+import re
+from typing import Text
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -12,13 +14,17 @@ class ServerDB:
         __tablename__ = 'users'
         id = Column(Integer, primary_key=True)
         login = Column(String, unique=True)
+        passwd_hash = Column(String, default=None)
+        pubkey = Column(String, default=None)
         ip = Column(String, default='0.0.0.0')
         port = Column(Integer, default=0)
         is_active = Column(Integer, default=0)
         last_conn = Column(DateTime)
 
-        def __init__(self, login, ip, port):
+        def __init__(self, login, passwd_hash, pubkey, ip, port):
             self.login = login
+            self.passwd_hash = passwd_hash
+            self.pubkey = pubkey
             self.ip = ip
             self.port = port
             self.is_active = 1
@@ -92,21 +98,24 @@ class ServerDB:
         self.session.commit()
 
     # Функция выполняется при входе пользователя, фиксирует в базе сам факт входа
-    def user_login(self, username, ip_address, port):
+    def user_login(self, username, password, pubkey, ip_address, port):
         # Запрос в таблицу пользователей на наличие там пользователя с таким именем
         result = self.session.query(self.AllUsers).filter_by(login=username)
          
-        # Если имя пользователя уже присутствует в таблице, обновляем время последнего входа
+        # Если имя пользователя уже присутствует в таблице, 
+        # проверяем пароль и обновляем время последнего входа
         if result.count():
             user = result.first()
-            user.ip = ip_address
-            user.port = port
-            user.is_active = 1
-            user.last_conn = datetime.datetime.now()
-        # Если нет, то создаём нового пользователя
-        else:
-            # Создаем экземпляр класса self.AllUsers, через который передаем данные в таблицу
-            user = self.AllUsers(username, ip_address, port)
+            if password == user.passwd_hash:
+                user.ip = ip_address
+                user.port = port
+                user.is_active = 1
+                user.last_conn = datetime.datetime.now()
+                user.pubkey = pubkey
+            else:
+                return False  # пароль не совпадает
+        else:  # Если нет, то создаём нового пользователя
+            user = self.AllUsers(username, password, pubkey, ip_address, port)
             self.session.add(user)
             # Коммит здесь нужен, чтобы в db записался ID
             self.session.commit()
@@ -118,6 +127,7 @@ class ServerDB:
         history = self.LoginHistory(user.id, ip_address, port, datetime.datetime.now())
         self.session.add(history)
         self.session.commit()
+        return True  # успешная регистрация
 
     # Функция фиксирует отключение пользователя
     def user_logout(self, username):
@@ -165,7 +175,8 @@ class ServerDB:
         # Возвращаем список кортежей
         return query.all()
 
-     # Функция фиксирует передачу сообщения и делает соответствующие отметки в БД
+     # Функция фиксирует передачу сообщения 
+     # и делает соответствующие отметки в БД
     def process_message(self, message):
         #
         sender = message['user']['account_name']
@@ -271,17 +282,27 @@ class ServerDB:
         # return query.all()
         return [contact[0] for contact in query.all()]
 
+    def get_hash(self, login):
+        """Метод получения хэша пароля пользователя."""
+        user = self.session.query(self.AllUsers).filter_by(login=login).first()
+        return user.passwd_hash
+
+    def get_pubkey(self, login):
+        """Метод получения публичного ключа пользователя."""
+        user = self.session.query(self.AllUsers).filter_by(login=login).first()
+        return user.pubkey
+
 if __name__ == '__main__':
     path = os.path.dirname(os.path.abspath(__file__))
     db = ServerDB(os.path.join(path, 'server_db.db3'))
 
     print(50*'=')
     print('login user test_1')
-    db.user_login('test_1', '192.168.1.4', 8888)
+    db.user_login('test_1', b'password_test_1', b'public key test_1', '192.168.1.4', 8888)
     print('login user test_2')
-    db.user_login('test_2', '192.168.1.5', 7777)
+    db.user_login('test_2', b'password_test_2', b'public key test_2', '192.168.1.5', 7777)
     print('login user test_3')
-    db.user_login('test_3', '192.168.1.6', 7778)
+    db.user_login('test_3', b'password_test_3', b'public key test_3', '192.168.1.6', 7778)
 
     # выводим список активных пользователей
     print(50*'=')
@@ -314,6 +335,13 @@ if __name__ == '__main__':
     print(50*'=')
     print('active users list:')
     pprint(db.active_users_list())
+
+    print(50*'=')
+    print('login user test_1 with wrong password')
+    if db.user_login('test_1', b'password_test1', b'public key test_1', '192.168.1.4', 8888):
+        print('success')
+    else:
+        print('not success')
 
     # запрашиваем историю входов по пользователю
     print(50*'=')
@@ -352,8 +380,8 @@ if __name__ == '__main__':
 
     print(50*'=')
     print('get messages test_1 - test_3')
-    db.get_messages('test_1', 'test_3')
+    db.get_messages('test_1')
 
     print(50*'=')
     print('get messages test_3 - test_1')
-    db.get_messages('test_3', 'test_1')
+    db.get_messages('test_3')

@@ -1,10 +1,11 @@
 """ Программа клиента для получения и отправки сообщений """
 print("загружаем модули...")
-import sys, logging, argparse
+import os, sys, logging, argparse
 from PyQt5.QtWidgets import QApplication
 from client_db import ClientDB
 from client_socket import ClientSocket
 from win_main import ClientMainWindow
+from Cryptodome.PublicKey import RSA
 
 sys.path.append('../')
 import common.settings as cmnset
@@ -43,6 +44,11 @@ def arg_parser():
     if not client_passwd or not client_name:
         logger.error(f'Попытка запуска клиента без пароля.')
         print("Имя пользователя и пароль обязательны при запуске клиента")
+        print("аргументы командной строки:")
+        print("-addr <ip address>")
+        print("-port <port>")
+        print("-n <user name>")
+        print("-p <password>")
         exit(1)
 
     return server_address, server_port, client_name, client_passwd
@@ -52,7 +58,7 @@ def main():
     # Загружаем параметы коммандной строки
     server_address, server_port, user_name, client_passwd = arg_parser()
     logger.debug('Загружены параметры командной строки')
-    
+
     # Приветственное сообщение
     print(f'Консольный месседжер. Клиентский модуль. Имя пользователя: {user_name}')
 
@@ -67,9 +73,25 @@ def main():
     # Создаём объект базы данных
     database = ClientDB(user_name)
 
+    # Загружаем ключи с файла, если же файла нет, то генерируем новую пару.
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    key_file = os.path.join(dir_path, f'{user_name}.key')
+    if not os.path.exists(key_file):
+        keys = RSA.generate(2048, os.urandom)
+        with open(key_file, 'wb') as key:
+            key.write(keys.export_key())
+    else:
+        with open(key_file, 'rb') as key:
+            keys = RSA.import_key(key.read())
+
     # Создаём объект - транспорт и запускаем транспортный поток
     try:
-        transport = ClientSocket(server_port, server_address, database, user_name)
+        transport = ClientSocket(server_port, 
+                                    server_address, 
+                                    database, 
+                                    user_name, 
+                                    client_passwd, 
+                                    keys)
     except my_err.ServerError as error:
         print(error.text)
         exit(1)

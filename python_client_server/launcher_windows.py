@@ -13,15 +13,16 @@ while True:
     if ACTION == 'q':
         break
     elif ACTION == 's':
+        os.chdir('server')
         PROCESS_LIST.append(
-            Popen('python server.py', 
+            Popen('python core.py', 
                     creationflags=CREATE_NEW_CONSOLE)
             )
 
-        print(os.getcwd())
-        os.chdir('client')
+        os.chdir('../client')
         for _ in range(3):
-            PROCESS_LIST.append(Popen(f'python client.py -n user_{_+1}', creationflags=CREATE_NEW_CONSOLE))
+            PROCESS_LIST.append(Popen(f'python client.py -n user_{_+1} -p 11111{_+1}'
+                                        , creationflags=CREATE_NEW_CONSOLE))
         
     elif ACTION == 'x':
         for p in PROCESS_LIST:

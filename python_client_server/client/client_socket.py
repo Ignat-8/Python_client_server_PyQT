@@ -1,5 +1,5 @@
 from socket import socket, AF_INET, SOCK_STREAM
-import sys, os, time, logging, json, threading
+import sys, time, logging, json, threading, hashlib, binascii, hmac
 from PyQt5.QtCore import pyqtSignal, QObject
 
 sys.path.append('../')
@@ -15,11 +15,11 @@ socket_lock = threading.Lock()
 
 # Класс - Транспорт, отвечает за взаимодействие с сервером
 class ClientSocket(threading.Thread, QObject):
-    # Сигналы новое сообщение и потеря соединения
-    new_message = pyqtSignal(str)
-    connection_lost = pyqtSignal()
+    # Сигналы:
+    new_message = pyqtSignal(str)  # новое сообщение
+    connection_lost = pyqtSignal()  # потеря соединения
 
-    def __init__(self, port, ip_address, database, username):
+    def __init__(self, port, ip_address, database, username, passwd, keys):
         # Вызываем конструктор предка
         threading.Thread.__init__(self)
         QObject.__init__(self)
@@ -27,6 +27,9 @@ class ClientSocket(threading.Thread, QObject):
         self.database = database  # Класс База данных - работа с базой
         self.username = username  # Имя пользователя
         self.socket = None  # Сокет для работы с сервером
+        self.password = passwd  # пароль
+        self.passwd_hash_string = '' # хэш пароля
+        self.keys = keys  # набор ключей для шифрования
         # Устанавливаем соединение:
         self.connection_init(port, ip_address)
         # Обновляем таблицы известных пользователей и контактов
@@ -73,16 +76,31 @@ class ClientSocket(threading.Thread, QObject):
 
         logger.debug('Установлено соединение с сервером')
         print('Установлено соединение с сервером')
+        
+        # вычисляем хэш пароля
+        passwd_bytes = self.password.encode('utf-8')
+        salt = self.username.lower().encode('utf-8')
+        passwd_hash = hashlib.pbkdf2_hmac('sha256', passwd_bytes, salt, 100000)
+        self.passwd_hash_string = binascii.hexlify(passwd_hash)
+        # Вычисленное значение можно хранить в БД
+        # print(passwd_hash_string)
 
-        try: # регистрируемся на сервере
-            with socket_lock:
-                print("сокет освободился регистрируемся на сервере")
-                req = self.create_message()
+        # Получаем публичный ключ и декодируем его из байтов
+        pubkey = self.keys.publickey().export_key().decode('ascii')
+
+        # регистрируемся на сервере
+        with socket_lock:
+            print("сокет освободился регистрируемся на сервере")
+            req = self.create_message()
+            req['user']['public_key'] = pubkey
+            req['user']['password'] = self.passwd_hash_string.decode('ascii')
+            try:
                 send_message(self.socket, req)
-                self.process_server_ans(get_message(self.socket))
-        except (OSError, json.JSONDecodeError):
-            logger.critical('Потеряно соединение с сервером!')
-            raise ServerError('Потеряно соединение с сервером!')
+                server_ans = get_message(self.socket)
+                self.process_server_ans(server_ans)
+            except (OSError, json.JSONDecodeError):
+                logger.critical('Потеряно соединение с сервером!')
+                raise ServerError('Потеряно соединение с сервером!')
 
         logger.info('Регистрация на сервере успешна')
         print('Регистрация на сервере успешна')
@@ -118,14 +136,23 @@ class ClientSocket(threading.Thread, QObject):
             if message['response'] == 200:
                 return
             elif message['response'] == 300:
-                logger.debug(f"300: {message['error']}")
+                logger.debug(f"300: {message['text']}")
                 raise AccountNameNotUniq
             elif message['response'] == 400:
-                raise ServerError(f"{message['error']}")
+                raise ServerError(f"{message['text']}")
+            elif message['response'] == 511:
+                secret_key = b'server-client secret_key'
+                hash = hmac.new(secret_key, 
+                                message['data'].encode('utf-8'), 
+                                'MD5')
+                digest = hash.digest()
+                my_ans = {'response': 511}
+                my_ans['data'] = binascii.b2a_base64(digest).decode('ascii')
+    
+                send_message(self.socket, my_ans)
+                self.process_server_ans(get_message(self.socket))
             else:
                 logger.debug(f"Принят неизвестный код подтверждения {message['response']}")
-        # else:
-        #     raise ReqFieldMissingError('response')
 
         # Если это сообщение от пользователя добавляем в базу, даём сигнал о новом сообщении
         if 'action' in message \
