@@ -1,6 +1,10 @@
-""" Программа клиента для получения и отправки сообщений """
-print("загружаем модули...")
-import os, sys, logging, argparse
+""" Программа клиента для получения и
+отправки сообщений """
+
+import os
+import sys
+import logging
+import argparse
 from PyQt5.QtWidgets import QApplication
 from client_db import ClientDB
 from client_socket import ClientSocket
@@ -24,8 +28,13 @@ def arg_parser():
     Выполняет проверку на корректность номера порта.
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('addr', default=cmnset.DEFAULT_ADDRESS, nargs='?')
-    parser.add_argument('port', default=cmnset.DEFAULT_PORT, type=int, nargs='?')
+    parser.add_argument('addr',
+                        default=cmnset.DEFAULT_ADDRESS,
+                        nargs='?')
+    parser.add_argument('port',
+                        default=cmnset.DEFAULT_PORT,
+                        type=int,
+                        nargs='?')
     parser.add_argument('-n', '--name', default=None, nargs='?')
     parser.add_argument('-p', '--password', default='', nargs='?')
     namespace = parser.parse_args(sys.argv[1:])
@@ -37,12 +46,13 @@ def arg_parser():
     # проверим подходящий номер порта
     if not 1023 < server_port < 65536:
         logger.critical(
-            f'Попытка запуска клиента с неподходящим номером порта: {server_port}. '
+            f'Попытка запуска клиента с неподходящим номером порта: \
+                {server_port}. '
             f'Допустимы адреса с 1024 до 65535. Клиент завершается.')
         exit(1)
 
     if not client_passwd or not client_name:
-        logger.error(f'Попытка запуска клиента без пароля.')
+        logger.error('Попытка запуска клиента без пароля.')
         print("Имя пользователя и пароль обязательны при запуске клиента")
         print("аргументы командной строки:")
         print("-addr <ip address>")
@@ -60,7 +70,8 @@ def main():
     logger.debug('Загружены параметры командной строки')
 
     # Приветственное сообщение
-    print(f'Консольный месседжер. Клиентский модуль. Имя пользователя: {user_name}')
+    print(f'Консольный месседжер. Клиентский модуль. \
+            Имя пользователя: {user_name}')
 
     # Создаём клиентокое приложение
     client_app = QApplication(sys.argv)
@@ -86,12 +97,12 @@ def main():
 
     # Создаём объект - транспорт и запускаем транспортный поток
     try:
-        transport = ClientSocket(server_port, 
-                                    server_address, 
-                                    database, 
-                                    user_name, 
-                                    client_passwd, 
-                                    keys)
+        transport = ClientSocket(server_port,
+                                 server_address,
+                                 database,
+                                 user_name,
+                                 client_passwd,
+                                 keys)
     except my_err.ServerError as error:
         print(error.text)
         exit(1)

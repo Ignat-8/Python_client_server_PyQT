@@ -27,7 +27,7 @@ class TestUtils(unittest.TestCase):
     test_dic_send = {
         'action': 'presence',
         'time': 111.111,
-        'user':{
+        'user': {
             'account_name': 'test_user',
         },
     }
@@ -38,7 +38,8 @@ class TestUtils(unittest.TestCase):
     def test_send_message_true(self):
         test_socket = TestSocket(self.test_dic_send)
         send_message(test_socket, self.test_dic_send)
-        self.assertEqual(test_socket.encoded_message, test_socket.received_message)
+        self.assertEqual(
+            test_socket.encoded_message, test_socket.received_message)
 
     def test_send_message_with_error(self):
         test_socket = TestSocket(self.test_dic_send)

@@ -1,5 +1,5 @@
 import json
-from  common.settings import MAX_PACKAGE_LENGTH, ENCODING
+from common.settings import MAX_PACKAGE_LENGTH, ENCODING
 from common.decors import log
 import common.errors as my_err
 

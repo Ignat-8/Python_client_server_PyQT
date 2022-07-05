@@ -1,14 +1,15 @@
-from email.policy import default
+import os
+import datetime
 from sqlalchemy import create_engine, Column, Integer, \
     String, DateTime, ForeignKey, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-import datetime, os
 from pprint import pprint
+
 
 class ClientDB:
     Base = declarative_base()
-    
+
     class Users(Base):
         __tablename__ = 'users'
         id = Column(Integer, primary_key=True)
@@ -36,10 +37,11 @@ class ClientDB:
         # Создаём движок базы данных
         path = os.path.dirname(os.path.realpath(__file__))
         filename = f'client_{user_name}.db3'
-        self.engine = create_engine(f'sqlite:///{os.path.join(path, filename)}', 
-                                    echo=False, 
-                                    pool_recycle=7200,
-                                    connect_args={'check_same_thread': False})
+        self.engine = create_engine(
+            f'sqlite:///{os.path.join(path, filename)}',
+            echo=False,
+            pool_recycle=7200,
+            connect_args={'check_same_thread': False})
 
         self.Base.metadata.create_all(self.engine)
         Session = sessionmaker(bind=self.engine)
@@ -62,7 +64,7 @@ class ClientDB:
                     .first() \
                     .is_contact = 1
         self.session.commit()
-    
+
     # Функция удаления контакта
     def del_contact(self, login):
         self.session.query(self.Users) \
@@ -75,8 +77,8 @@ class ClientDB:
     def check_contact(self, login):
         print('check_contact for ligin:', login)
         if self.session.query(self.Users) \
-                        .filter_by(login=login, is_contact=1) \
-                        .count():
+                       .filter_by(login=login, is_contact=1) \
+                       .count():
             print('return True')
             return True
         else:
@@ -85,42 +87,48 @@ class ClientDB:
 
     # Функция, возвращающая контакты
     def get_contacts(self):
-        return [contact[0] for contact in self.session.query(self.Users.login)
-                                                        .filter_by(is_contact=1)
-                                                        .all()]
+        return [contact[0] for contact in
+                self.session.query(self.Users.login)
+                            .filter_by(is_contact=1)
+                            .all()]
 
     # Функция, возвращающая список известных пользователей
     def get_users(self):
-        return [user[0] for user in self.session.query(self.Users.login).all()]
+        return [user[0] for user in
+                self.session.query(self.Users.login).all()]
 
     # Функция сохраняет сообщение
     def save_message(self, login, message_text, message_type):
         contact = self.session.query(self.Users) \
-                                .filter_by(login=login, is_contact=1) 
+                              .filter_by(login=login, is_contact=1)
 
         # Если имя пользователя есть в списке контактов
         if contact.count() and message_type in ('in', 'out'):
             contact = contact.first()
-            message_row = self.Messages(contact.id, message_text, message_type)
+            message_row = self.Messages(contact.id,
+                                        message_text,
+                                        message_type)
             self.session.add(message_row)
             self.session.commit()
         else:
-            print(f'client_db.save_message: login="{login}", text="{message_text}", message_type="{message_type}"')
+            print(f'client_db.save_message: login="{login}", \
+                    text="{message_text}", \
+                    message_type="{message_type}"')
 
     # Функция возвращает историю переписки
     def get_history(self, login=None):
         # history = [('message_type', 'login', 'message', 'date')]
         history = []
         query = self.session.query(self.Users.id,
-                                    self.Users.login, 
-                                    self.Messages.message,
-                                    self.Messages.message_type,
-                                    self.Messages.date) \
+                                   self.Users.login,
+                                   self.Messages.message,
+                                   self.Messages.message_type,
+                                   self.Messages.date) \
                             .join(self.Users)
 
         if login:
             contact = self.session.query(self.Users) \
-                                    .filter_by(login=login, is_contact=1) 
+                                  .filter_by(login=login, is_contact=1)
             # Если имя пользователя есть в списке контактов
             if contact.count():
                 contact = contact.first()
@@ -129,10 +137,14 @@ class ClientDB:
                 print("Такого пользователя нет в списке контактов")
                 return history
 
-        [history.append((row.message_type, row.login, row.message, row.date))
-                        for row in query.all()]
+        [history.append((row.message_type,
+                         row.login,
+                         row.message,
+                         row.date))
+         for row in query.all()]
+
         return history
-    
+
     # Функция обновления переписки c пользователем
     # список берем с сервера
     def update_messages(self, messages):
@@ -163,7 +175,7 @@ if __name__ == '__main__':
     # print('Add users')
     # user_list = ['test_1', 'test_2', 'test_3']
     # db.add_users(user_list)
-    
+
     # print(50*'=')
     # print('Add contact')
     # db.add_contact('test_1')
@@ -201,9 +213,11 @@ if __name__ == '__main__':
 
     print(50*'=')
     print('Update messages with user test_2 from server')
-    messages=[('in', 'test_2', 'some message from test_2 user', datetime.datetime.now()),
-              ('in', 'test_2', 'some message from test_2 user', datetime.datetime.now()),
-              ('out', 'test_2', 'some message to test_2 user', datetime.datetime.now())]
+    messages = [('in', 'test_2', 'some message from test_2 user',
+                 datetime.datetime.now()),
+                ('in', 'test_2', 'some message from test_2 user',
+                 datetime.datetime.now()),
+                ('out', 'test_2', 'some message to test_2 user',
+                 datetime.datetime.now())]
     db.update_messages(messages)
     pprint(db.get_history('test_2'), compact=True)
-

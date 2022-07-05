@@ -1,4 +1,3 @@
-
 import unittest
 import json
 import sys
@@ -21,11 +20,11 @@ class TestUtils(unittest.TestCase):
         },
     }
 
-    response_ok = {'response': 200, 
-                    'alert': 'соединение успешно'}
+    response_ok = {'response': 200,
+                   'alert': 'соединение успешно'}
     response_err = {'response': 400,
                     'error': 'ошибка соединения'}
-    
+
     server_socket = None
     client_socket = None
 
@@ -46,7 +45,10 @@ class TestUtils(unittest.TestCase):
         self.server_socket.close()
 
     def test_send_wrong_message_from_client(self):
-        self.assertRaises(TypeError, send_message, self.client_socket, 'not dict')
+        self.assertRaises(TypeError,
+                          send_message,
+                          self.client_socket,
+                          'not dict')
 
     def test_send_message_client_server(self):
         send_message(self.client_socket, self.test_message)

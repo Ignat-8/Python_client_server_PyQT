@@ -16,6 +16,3 @@ DEFAULT_PORT = 7777
 
 # Текущий уровень логирования
 LOGGING_LEVEL = logging.DEBUG
-
-
-

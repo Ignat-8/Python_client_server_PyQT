@@ -2,9 +2,10 @@ import sys
 import logging
 
 sys.path.append('../')
-from PyQt5.QtWidgets import QDialog, QLabel, QComboBox, QPushButton, QApplication
+from PyQt5.QtWidgets import QDialog, QLabel, QComboBox, \
+                            QPushButton, QApplication
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QStandardItemModel, QStandardItem
+
 
 logger = logging.getLogger('client_dist')
 
@@ -49,13 +50,15 @@ class AddContactDialog(QDialog):
         # Назначаем действие на кнопку обновить
         self.btn_refresh.clicked.connect(self.update_possible_contacts)
 
-    # Заполняем список возможных контактов разницей между всеми пользователями и
+    # Заполняем список возможных контактов разницей между всеми
+    # пользователями и
     def possible_contacts_update(self):
         self.selector.clear()
         # множества всех контактов и контактов клиента
         contacts_list = set(self.database.get_contacts())
         users_list = set(self.database.get_users())
-        # Удалим сами себя из списка пользователей, чтобы нельзя было добавить самого себя
+        # Удалим сами себя из списка пользователей,
+        # чтобы нельзя было добавить самого себя
         users_list.remove(self.transport.username)
         # Добавляем список возможных контактов
         self.selector.addItems(users_list - contacts_list)
@@ -68,7 +71,8 @@ class AddContactDialog(QDialog):
         except OSError:
             pass
         else:
-            logger.debug('Обновление списка пользователей с сервера выполнено')
+            logger.debug('Обновление списка пользователей \
+                          с сервера выполнено')
             self.possible_contacts_update()
 
 
@@ -79,7 +83,7 @@ if __name__ == '__main__':
 
     from client_socket import ClientSocket
     transport = ClientSocket(7777, '127.0.0.1', database, 'test1')
-    
+
     window = AddContactDialog(transport, database)
     window.show()
     app.exec_()

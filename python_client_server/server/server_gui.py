@@ -1,4 +1,3 @@
-from multiprocessing.dummy import current_process
 import sys
 from PyQt5.QtWidgets import QMainWindow, QAction, qApp, QApplication, \
     QLabel, QTableView, QDialog, QPushButton, QLineEdit, QFileDialog
@@ -11,7 +10,8 @@ def gui_create_model(database):
     list_users = database.active_users_list()
     # print('!!!!!! list_users =', list_users)
     list_table = QStandardItemModel()
-    list_table.setHorizontalHeaderLabels(['Имя Клиента', 'IP Адрес', 'Порт', 'Время подключения'])
+    list_table.setHorizontalHeaderLabels(
+        ['Имя Клиента', 'IP Адрес', 'Порт', 'Время подключения'])
     for row in list_users:
         user, ip, port, time = row
         user = QStandardItem(user)
@@ -20,7 +20,8 @@ def gui_create_model(database):
         ip.setEditable(False)
         port = QStandardItem(str(port))
         port.setEditable(False)
-        # Уберём миллисекунды из строки времени, т.к. такая точность не требуется.
+        # Уберём миллисекунды из строки времени,
+        # т.к. такая точность не требуется.
         time = QStandardItem(str(time.replace(microsecond=0)))
         time.setEditable(False)
         list_table.appendRow([user, ip, port, time])
@@ -35,22 +36,23 @@ def create_stat_message(database):
     # Объект модели данных:
     list_table = QStandardItemModel()
     list_table.setHorizontalHeaderLabels(
-        ['Имя Клиента', 'Дата входа', 'Сообщений отправлено', 'Сообщений получено'])
+        ['Имя Клиента', 'Дата входа',
+         'Сообщений отправлено', 'Сообщений получено'])
     for row in hist_list:
         user, last_seen, sent, recvd = row
 
         user = QStandardItem(user)
         user.setEditable(False)
-        
+
         last_seen = QStandardItem(str(last_seen.replace(microsecond=0)))
         last_seen.setEditable(False)
-        
+
         sent = QStandardItem(str(sent))
         sent.setEditable(False)
-        
+
         recvd = QStandardItem(str(recvd))
         recvd.setEditable(False)
-        
+
         list_table.appendRow([user, last_seen, sent, recvd])
     return list_table
 
@@ -69,16 +71,16 @@ def create_stat_login(database):
 
         user = QStandardItem(user)
         user.setEditable(False)
-        
+
         last_seen = QStandardItem(str(last_seen.replace(microsecond=0)))
         last_seen.setEditable(False)
 
         addr = QStandardItem(str(addr))
         addr.setEditable(False)
-        
+
         port = QStandardItem(str(port))
         port.setEditable(False)
-        
+
         list_table.appendRow([user, last_seen, addr, port])
     return list_table
 
@@ -120,7 +122,8 @@ class MainWindow(QMainWindow):
         self.toolbar.addAction(self.config_btn)
 
         # Настройки геометрии основного окна
-        # Поскольку работать с динамическими размерами мы не умеем, и мало времени на изучение, размер окна фиксирован.
+        # Поскольку работать с динамическими размерами мы не умеем,
+        # и мало времени на изучение, размер окна фиксирован.
         self.setFixedSize(800, 600)
         self.setWindowTitle('Messaging Server alpha release')
 
@@ -251,7 +254,9 @@ class ConfigWindow(QDialog):
         self.ip_label.setFixedSize(180, 15)
 
         # Метка с напоминанием о пустом поле.
-        self.ip_label_note = QLabel(' оставьте это поле пустым, чтобы\n принимать соединения с любых адресов.', self)
+        self.ip_label_note = QLabel(
+            ' оставьте это поле пустым, чтобы\n \
+            принимать соединения с любых адресов.', self)
         self.ip_label_note.move(10, 168)
         self.ip_label_note.setFixedSize(500, 30)
 
@@ -278,32 +283,18 @@ if __name__ == '__main__':
     main_window = MainWindow()
     main_window.statusBar().showMessage('Test Statusbar Message')
     test_list = QStandardItemModel(main_window)
-    test_list.setHorizontalHeaderLabels(['Имя Клиента', 'IP Адрес', 'Порт', 'Время подключения'])
+    test_list.setHorizontalHeaderLabels(
+        ['Имя Клиента', 'IP Адрес', 'Порт', 'Время подключения'])
     test_list.appendRow(
-        [QStandardItem('test1'), QStandardItem('192.198.0.5'), QStandardItem('23544'), QStandardItem('16:20:34')])
+        [QStandardItem('test1'),
+         QStandardItem('192.198.0.5'),
+         QStandardItem('23544'),
+         QStandardItem('16:20:34')])
     test_list.appendRow(
-        [QStandardItem('test2'), QStandardItem('192.198.0.8'), QStandardItem('33245'), QStandardItem('16:22:11')])
+        [QStandardItem('test2'),
+         QStandardItem('192.198.0.8'),
+         QStandardItem('33245'),
+         QStandardItem('16:22:11')])
     main_window.active_clients_table.setModel(test_list)
     main_window.active_clients_table.resizeColumnsToContents()
     app.exec_()
-
-    # ----------------------------------------------------------
-    # app = QApplication(sys.argv)
-    # window = HistoryWindow()
-    # test_list = QStandardItemModel(window)
-    # test_list.setHorizontalHeaderLabels(
-    #     ['Имя Клиента', 'Последний раз входил', 'Отправлено', 'Получено'])
-    # test_list.appendRow(
-    #     [QStandardItem('test1'), QStandardItem('Fri Dec 12 16:20:34 2020'), QStandardItem('2'), QStandardItem('3')])
-    # test_list.appendRow(
-    #     [QStandardItem('test2'), QStandardItem('Fri Dec 12 16:23:12 2020'), QStandardItem('8'), QStandardItem('5')])
-    # window.history_table.setModel(test_list)
-    # window.history_table.resizeColumnsToContents()
-    #
-    # app.exec_()
-
-    # ----------------------------------------------------------
-    # app = QApplication(sys.argv)
-    # dial = ConfigWindow()
-    #
-    # app.exec_()

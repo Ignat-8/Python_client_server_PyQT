@@ -27,7 +27,7 @@ class TestUtils(unittest.TestCase):
     test_dic_send = {
         'action': 'presence',
         'time': 111.111,
-        'user':{
+        'user': {
             'account_name': 'test_user',
         },
     }
@@ -38,20 +38,26 @@ class TestUtils(unittest.TestCase):
     def test_send_message_true(self):
         test_socket = TestSocket(self.test_dic_send)
         send_message(test_socket, self.test_dic_send)
-        self.assertEqual(test_socket.encoded_message, test_socket.received_message)
+        self.assertEqual(test_socket.encoded_message,
+                         test_socket.received_message)
 
     def test_send_message_with_error(self):
         test_socket = TestSocket(self.test_dic_send)
         send_message(test_socket, self.test_dic_send)
-        self.assertRaises(TypeError, send_message, test_socket, 'wrong_dict')
+        self.assertRaises(TypeError,
+                          send_message,
+                          test_socket,
+                          'wrong_dict')
 
     def test_get_message_ok(self):
         test_socket_ok = TestSocket(self.response_ok)
-        self.assertEqual(get_message(test_socket_ok), self.response_ok)
+        self.assertEqual(get_message(test_socket_ok),
+                         self.response_ok)
 
     def test_get_message_err(self):
         test_socket_err = TestSocket(self.response_err)
-        self.assertEqual(get_message(test_socket_err), self.response_err)
+        self.assertEqual(get_message(test_socket_err),
+                         self.response_err)
 
 
 if __name__ == '__main__':

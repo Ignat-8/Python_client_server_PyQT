@@ -2,9 +2,10 @@ import sys
 import logging
 
 sys.path.append('../')
-from PyQt5.QtWidgets import QDialog, QLabel, QComboBox, QPushButton, QApplication
+from PyQt5.QtWidgets import QDialog, QLabel, QComboBox, \
+                            QPushButton, QApplication
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QStandardItemModel, QStandardItem
+
 
 logger = logging.getLogger('client_dist')
 
@@ -48,7 +49,8 @@ if __name__ == '__main__':
     database = ClientDatabase('test1')
     window = DelContactDialog(database)
     # при подключении контакты удаляются, а затем добавляются с сервера
-    # поэтому для проверки сами вручную добавляем контакт для списка удаления
+    # поэтому для проверки сами вручную добавляем контакт для списка
+    # удаления
     database.add_contact('test1')
     database.add_contact('test2')
     print(database.get_contacts())
