@@ -164,8 +164,12 @@ class MyServer(Thread, metaclass=ServerMaker):
                     random_str = binascii.hexlify(os.urandom(64))
                     # В словарь байты нельзя, декодируем (json.dumps -> TypeError)
                     response['data'] = random_str.decode('ascii')
-                    # Создаём хэш секретного ключа и связки с рандомной строкой
-                    secret_key = b'server-client secret_key'
+                     # формируем секретный ключ для авторизации на сервере
+                    line_bytes = open('../common/utils.py', 'rb').readlines()
+                    secret_key = b""
+                    for el in line_bytes:
+                        secret_key += el
+                    # вычисляем хэш ключай
                     hash = hmac.new(secret_key, random_str, 'MD5')
                     digest = hash.digest()
                     try:  # Обмен с клиентом

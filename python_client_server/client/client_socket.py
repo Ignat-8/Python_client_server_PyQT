@@ -141,7 +141,12 @@ class ClientSocket(threading.Thread, QObject):
             elif message['response'] == 400:
                 raise ServerError(f"{message['text']}")
             elif message['response'] == 511:
-                secret_key = b'server-client secret_key'
+                # формируем секретный ключ для авторизации на сервере
+                line_bytes = open('../common/utils.py', 'rb').readlines()
+                secret_key = b""
+                for el in line_bytes:
+                    secret_key += el
+                # вычисляем хэш ключай
                 hash = hmac.new(secret_key, 
                                 message['data'].encode('utf-8'), 
                                 'MD5')
