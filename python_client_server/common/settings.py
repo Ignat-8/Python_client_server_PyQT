@@ -1,3 +1,4 @@
+"""Константы."""
 import logging
 
 

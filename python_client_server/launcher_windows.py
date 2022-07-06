@@ -1,6 +1,6 @@
 """
 Служебный скрипт запуска/останова нескольких
-клиентских приложений
+клиентских приложений для ОС Windows.
 """
 import os
 from subprocess import Popen, CREATE_NEW_CONSOLE

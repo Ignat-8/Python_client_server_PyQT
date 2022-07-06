@@ -8,9 +8,16 @@ from pprint import pprint
 
 
 class ClientDB:
+    """Класс создания базы данных клиентского приложения."""
     Base = declarative_base()
 
     class Users(Base):
+        """
+        Таблица всех пользователей:
+        id - порядковый номер записи,
+        login - имя пользователя,
+        is_contact - признак наличия этого пользователя в конактах
+        """
         __tablename__ = 'users'
         id = Column(Integer, primary_key=True)
         login = Column(String, unique=True, nullable=False)
@@ -20,6 +27,14 @@ class ClientDB:
             self.login = login
 
     class Messages(Base):
+        """
+        Таблица переписки со всеми пользователями:
+        id - порядковый номер записи,
+        user_id - id пользователя, с которым велась переписка
+        message - текст сообщения,
+        message_type - тип сообщения, входящее (in) или исходящее (out),
+        date - дата и время сохранения сообщения
+        """
         __tablename__ = 'messages'
         id = Column(Integer, primary_key=True)
         user_id = Column(Integer, ForeignKey('users.id'))
@@ -47,8 +62,8 @@ class ClientDB:
         Session = sessionmaker(bind=self.engine)
         self.session = Session()
 
-    # Функция добавления пользователя
     def add_users(self, user_list):
+        """Функция добавления пользователей из списка user_list."""
         print(50*'=' + ' client_db.add_users')
         print('user_list:', user_list)
         self.session.query(self.Users).delete()
@@ -57,24 +72,36 @@ class ClientDB:
             self.session.add(user_row)
         self.session.commit()
 
-    # Функция добавления контактов
     def add_contact(self, login):
+        """
+        Функция добавления контакта.
+        Добавление осуществляется в таблицу users
+        через отметку is_contact = 1.
+        """
         self.session.query(self.Users) \
                     .filter_by(login=login) \
                     .first() \
                     .is_contact = 1
         self.session.commit()
 
-    # Функция удаления контакта
     def del_contact(self, login):
+        """
+        Функция удаления контакта.
+        Удаление осуществляется в таблице users
+        через отметку is_contact = 0.
+        """
         self.session.query(self.Users) \
                     .filter_by(login=login) \
                     .first() \
                     .is_contact = 0
         self.session.commit()
 
-    # Функция проверяет наличие пользователя в таблице Контактов
     def check_contact(self, login):
+        """
+        Функция проверяет наличие пользователя в контактах.
+        Проверка осуществляется по таблице users
+        по условию is_contact = 1.
+        """
         print('check_contact for ligin:', login)
         if self.session.query(self.Users) \
                        .filter_by(login=login, is_contact=1) \
@@ -85,20 +112,20 @@ class ClientDB:
             print('return False')
             return False
 
-    # Функция, возвращающая контакты
     def get_contacts(self):
+        """Функция возвращает список всех контактов пользователя."""
         return [contact[0] for contact in
                 self.session.query(self.Users.login)
                             .filter_by(is_contact=1)
                             .all()]
 
-    # Функция, возвращающая список известных пользователей
     def get_users(self):
+        """Функция возвращает список всех пользователей."""
         return [user[0] for user in
                 self.session.query(self.Users.login).all()]
 
-    # Функция сохраняет сообщение
     def save_message(self, login, message_text, message_type):
+        """Функция сохраняет сообщение в таблицу Messages."""
         contact = self.session.query(self.Users) \
                               .filter_by(login=login, is_contact=1)
 
@@ -115,8 +142,8 @@ class ClientDB:
                     text="{message_text}", \
                     message_type="{message_type}"')
 
-    # Функция возвращает историю переписки
     def get_history(self, login=None):
+        """Функция возвращает историю переписки."""
         # history = [('message_type', 'login', 'message', 'date')]
         history = []
         query = self.session.query(self.Users.id,
@@ -145,9 +172,10 @@ class ClientDB:
 
         return history
 
-    # Функция обновления переписки c пользователем
-    # список берем с сервера
+    # 
     def update_messages(self, messages):
+        """Функция обновления переписки c пользователем.
+           Историю переписки берем с сервера."""
         print('!!!!! update_messages =', messages)
         # удаляем текущие сообщения с этим пользователем
         self.session.query(self.Messages) \

@@ -1,3 +1,4 @@
+"""Декораторы."""
 import sys
 import socket
 import logging
@@ -6,6 +7,7 @@ sys.path.append('../')
 
 
 def log(func):
+    """Декоратор логирования."""
     def wrapper(*args, **kwargs):
         logger_name = 'server' if 'server.py' in sys.argv[0] \
                       else 'client'

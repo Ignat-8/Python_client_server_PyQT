@@ -1,15 +1,16 @@
-""" Программа клиента для получения и
-отправки сообщений """
-
+"""
+Программа клиента для получения и отправки сообщений
+"""
 import os
 import sys
 import logging
 import argparse
 from PyQt5.QtWidgets import QApplication
+from Cryptodome.PublicKey import RSA
+
 from client_db import ClientDB
 from client_socket import ClientSocket
 from win_main import ClientMainWindow
-from Cryptodome.PublicKey import RSA
 
 sys.path.append('../')
 import common.settings as cmnset
@@ -65,6 +66,9 @@ def arg_parser():
 
 
 def main():
+    """Программа клиента для получения и
+       отправки сообщений"""
+
     # Загружаем параметы коммандной строки
     server_address, server_port, user_name, client_passwd = arg_parser()
     logger.debug('Загружены параметры командной строки')
@@ -73,7 +77,7 @@ def main():
     print(f'Консольный месседжер. Клиентский модуль. \
             Имя пользователя: {user_name}')
 
-    # Создаём клиентокое приложение
+    # Создаём клиентское приложение
     client_app = QApplication(sys.argv)
 
     # Записываем логи

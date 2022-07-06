@@ -1,6 +1,5 @@
 """ Программа сервера для получения приветствия от клиента
 и отправки ответа """
-
 import sys
 import os
 import socket
@@ -28,7 +27,7 @@ SERVER_LOGGER = logging.getLogger('server')
 
 
 class PortVerifi:
-
+    """Класс проверки правильности введенного номера порта."""
     def __set__(self, instance, value):
         if value < 1024 and value > 65535:
             SERVER_LOGGER.error('Номер порта за пределами \
@@ -46,6 +45,7 @@ class PortVerifi:
 
 
 class MyServer(Thread, metaclass=ServerMaker):
+    """Класс создания серверного приложения."""
     port = PortVerifi()
 
     def __init__(self, listen_address, listen_port, database):
@@ -170,6 +170,12 @@ class MyServer(Thread, metaclass=ServerMaker):
 
     @login_required
     def process_client_message(self, message, client):
+        """
+        Функция обработки сообщений от клиентов. Производит авторизацию приложения клиента,
+        регистрацию клиента по логину и паролю. Пароль клиента хранится в виде хеша в БД.
+        Производит отправку сообщений между пользователями и сохранение переписки.
+
+        """
         SERVER_LOGGER.info('проверка сообщения от клента')
         if 'action' in message \
                 and 'time' in message \
@@ -422,7 +428,7 @@ def main():
     server.start()
 
     def server_gui():
-        # Создаём графическое окружение для сервера:
+        """Создаёт графическое окружение для сервера."""
         server_app = QApplication(sys.argv)
         main_window = MainWindow()
 

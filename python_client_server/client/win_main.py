@@ -17,8 +17,8 @@ from common.errors import ServerError
 logger = logging.getLogger('client_dist')
 
 
-# Класс основного окна
 class ClientMainWindow(QMainWindow):
+    """Класс основного окна клиентского приложения."""
     def __init__(self, database, transport):
         super().__init__()
         # основные переменные
@@ -61,8 +61,12 @@ class ClientMainWindow(QMainWindow):
         self.set_disabled_input()
         self.show()
 
-    # Деактивировать поля ввода
+    # 
     def set_disabled_input(self):
+        """
+        Функция деактивации поля ввода.
+        Пока не выбран пользователь для общения, поле ввода блокируется.
+        """
         # Надпись  - получатель.
         font = QtGui.QFont()
         font.setPointSize(10)
@@ -79,9 +83,11 @@ class ClientMainWindow(QMainWindow):
         self.ui.btn_send.setDisabled(True)
         self.ui.text_message.setDisabled(True)
 
-    # Заполняем историю сообщений.
     def history_list_update(self):
-        # Получаем историю сортированную по дате
+        """
+        Функция получения истории сообщений сортированную по дате.
+        Выборка ограничивается 20 записями.
+        """
         print(50*'=' + 'win_main.py, def history_list_update')
         print('list_messages =',
               self.database.get_history(self.current_chat))
@@ -122,16 +128,20 @@ class ClientMainWindow(QMainWindow):
                 self.history_model.appendRow(mess)
         self.ui.list_messages.scrollToBottom()
 
-    # Функция обработчик double click по контакту
     def select_active_user(self):
+        """Функция обработчик double click по контакту."""
         # Выбранный пользователем контакт находится в выделенном
         # элементе в QListView
         self.current_chat = self.ui.list_contacts.currentIndex().data()
         # вызываем основную функцию
         self.set_active_user()
 
-    # Функция, устанавливающая активного собеседника
+    # 
     def set_active_user(self):
+        """
+        Функция устанавливает активного собеседника
+        и обновляет историю переписки.
+        """
         # Ставим надпись и активируем кнопки
         self.ui.label_new_message.setText(
             f'Введите сообщение для {self.current_chat}:')
@@ -142,8 +152,8 @@ class ClientMainWindow(QMainWindow):
         # Заполняем окно историю сообщений по требуемому пользователю.
         self.history_list_update()
 
-    # Функция, обновляющая контакт-лист
     def clients_list_update(self):
+        """Функция обновляет контакт-лист."""
         contacts_list = self.database.get_contacts()
         self.contacts_model = QStandardItemModel()
         for i in sorted(contacts_list):
@@ -152,23 +162,25 @@ class ClientMainWindow(QMainWindow):
             self.contacts_model.appendRow(item)
         self.ui.list_contacts.setModel(self.contacts_model)
 
-    # Функция добавления контакта
     def add_contact_window(self):
+        """Функция добавления контакта."""
         global select_dialog
         select_dialog = AddContactDialog(self.transport, self.database)
         select_dialog.btn_ok.clicked.connect(
             lambda: self.add_contact_action(select_dialog))
         select_dialog.show()
 
-    # Функция - обработчик добавления, сообщает серверу,
-    # обновляет таблицу и список контактов
     def add_contact_action(self, item):
+        """
+        Функция обработчик добавления, сообщает серверу,
+        обновляет таблицу и список контактов
+        """
         new_contact = item.selector.currentText()
         self.add_contact(new_contact)
         item.close()
 
-    # Функция, добавляющая контакт в БД
     def add_contact(self, new_contact):
+        """ Функция добавляет контакт в БД."""
         try:
             self.transport.add_contact(new_contact)
         except ServerError as err:
@@ -188,17 +200,19 @@ class ClientMainWindow(QMainWindow):
             self.messages.information(
                 self, 'Успех', 'Контакт успешно добавлен.')
 
-    # Функция удаления контакта
     def delete_contact_window(self):
+        """Функция удаления контакта."""
         global remove_dialog
         remove_dialog = DelContactDialog(self.database)
         remove_dialog.btn_ok.clicked.connect(
             lambda: self.delete_contact(remove_dialog))
         remove_dialog.show()
 
-    # Функция-обработчик удаления контакта: сообщает на сервер,
-    # обновляет таблицу контактов
     def delete_contact(self, item):
+        """
+        Функция-обработчик удаления контакта: сообщает на сервер,
+        обновляет таблицу контактов
+        """
         selected = item.selector.currentText()
         try:
             self.transport.remove_contact(selected)
@@ -223,10 +237,13 @@ class ClientMainWindow(QMainWindow):
                 self.current_chat = None
                 self.set_disabled_input()
 
-    # Функция отправки сообщения пользователю.
     def send_message(self):
-        # Текст в поле, проверяем что поле не пустое затем
-        # забирается сообщение и поле очищается
+        """
+        Функция отправки сообщения пользователю.
+        Текст в поле проверяем не пустое, затем
+        забирается сообщение и поле очищается.
+        """
+        
         print(50*'=' + ' win_main.send_message')
         message_text = self.ui.text_message.toPlainText()
         self.ui.text_message.clear()
@@ -256,9 +273,9 @@ class ClientMainWindow(QMainWindow):
                    для {self.current_chat}: {message_text}')
             self.history_list_update()
 
-    # Слот приёма нового сообщений
     @pyqtSlot(str)
     def message(self, sender):
+        """Слот приёма нового сообщения."""
         print('sender =', sender)
         if sender == self.current_chat:
             self.history_list_update()
@@ -287,16 +304,19 @@ class ClientMainWindow(QMainWindow):
                     self.current_chat = sender
                     self.set_active_user()
 
-    # Слот потери соединения
-    # Выдаёт сообщение об ошибке и завершает работу приложения
     @pyqtSlot()
     def connection_lost(self):
+        """
+        Слот потери соединения. Выдаёт сообщение об ошибке
+        и завершает работу приложения.
+        """
         self.messages.warning(self,
                               'Сбой соединения',
                               'Потеряно соединение с сервером. ')
         self.close()
 
     def make_connection(self, trans_obj):
+        """Запускает сигналы new_message и connection_lost."""
         trans_obj.new_message.connect(self.message)
         trans_obj.connection_lost.connect(self.connection_lost)
 

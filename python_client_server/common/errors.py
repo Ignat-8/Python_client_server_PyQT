@@ -2,7 +2,7 @@
 
 
 class ServerError(Exception):
-    """Исключение - ошибка сервера"""
+    """Исключение - ошибка сервера."""
     def __init__(self, text):
         self.text = text
 
@@ -11,25 +11,25 @@ class ServerError(Exception):
 
 
 class NonDictError(Exception):
-    """Исключение - аргумент функции не словарь"""
+    """Исключение - аргумент функции не словарь."""
     def __str__(self):
         return 'Аргумент функции должен быть словарём.'
 
 
 class NonStrError(Exception):
-    """Исключение - аргумент функции не строка"""
+    """Исключение - аргумент функции не строка."""
     def __str__(self):
         return 'Аргумент функции должен быть строкой.'
 
 
 class NonBytesError(Exception):
-    """Исключение - аргумент функции не bytes"""
+    """Исключение - аргумент функции не bytes."""
     def __str__(self):
         return 'Аргумент функции должен быть bytes.'
 
 
 class ReqFieldMissingError(Exception):
-    """Ошибка - отсутствует обязательное поле в принятом словаре"""
+    """Ошибка - отсутствует обязательное поле в принятом словаре."""
     def __init__(self, missing_field):
         self.missing_field = missing_field
 
@@ -39,6 +39,6 @@ class ReqFieldMissingError(Exception):
 
 
 class AccountNameNotUniq(Exception):
-    """Ошибка - не уникальное имя пользователя"""
+    """Ошибка - не уникальное имя пользователя."""
     def __str__(self):
         return 'Имя пользователя уже используется.'

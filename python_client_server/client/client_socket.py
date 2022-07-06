@@ -20,8 +20,12 @@ logger = logging.getLogger('client')
 socket_lock = threading.Lock()
 
 
-# Класс - Транспорт, отвечает за взаимодействие с сервером
+# 
 class ClientSocket(threading.Thread, QObject):
+    """
+    Класс - Транспорт, отвечает за взаимодействие с сервером.
+    Имеет два сигнала - new_message и connection_lost.
+    """
     # Сигналы:
     new_message = pyqtSignal(str)  # новое сообщение
     connection_lost = pyqtSignal()  # потеря соединения
@@ -120,8 +124,10 @@ class ClientSocket(threading.Thread, QObject):
 
     # @staticmethod
     def create_message(self, action='presence', text='', destination=''):
-        """Функция создаёт словарь с сообщением.
-        По умолчанию это регистрационное сообщение presence"""
+        """
+        Функция создаёт словарь с сообщением.
+        По умолчанию это регистрационное сообщение presence.
+        """
         message = {
             'action': action,
             'time': time.time(),
@@ -137,9 +143,10 @@ class ClientSocket(threading.Thread, QObject):
         return message
 
     def process_server_ans(self, message):
-        """ Обрабатывает сообщения от сервера. Ничего не возвращает.
-            Генерирует исключение при ошибке.
-            """
+        """
+        Обрабатывает сообщения от сервера. Ничего не возвращает.
+        Генерирует исключение при ошибке.
+        """
         logger.debug(f'Разбор сообщения от сервера: {message}')
         print(50*'=' + ' client_socket.process_server_ans')
         print(f'Разбор сообщения от сервера: {message}')
@@ -189,7 +196,7 @@ class ClientSocket(threading.Thread, QObject):
 
     # Функция, обновляющая контакт - лист с сервера
     def contacts_list_update(self):
-        """ Скачивает с сервера контакт лист пользователя """
+        """Скачивает с сервера контакт лист пользователя."""
         logger.debug(f'Запрос контакт листа для \
             пользователя {self.username}')
         req = self.create_message(action='get_contacts')
@@ -206,8 +213,7 @@ class ClientSocket(threading.Thread, QObject):
             logger.error('Не удалось обновить список контактов.')
 
     def user_list_update(self):
-        """Обновляет таблицу известных пользователей."""
-
+        """Обновляет с сервера таблицу известных пользователей."""
         logger.debug(f'Запрос списка известных \
             пользователей {self.username}')
         req = self.create_message(action='get_userlist')
@@ -224,6 +230,7 @@ class ClientSocket(threading.Thread, QObject):
     # Функция обновления переписки cо всеми пользователями
     # список берем с сервера
     def update_messages(self):
+        """Обновляет с сервера таблицу переписки."""
         logger.debug(f'Обновление переписки для \
             пользователя {self.username}')
         print(50*'=' + ' client_socket.update_message')
@@ -245,7 +252,7 @@ class ClientSocket(threading.Thread, QObject):
             print('Не удалось обновить переписку пользователей.')
 
     def add_contact(self, contact):
-        """ Добавляет новый контакт """
+        """Добавляет новый контакт."""
         logger.debug(f'Добавление контакта {contact}')
         print(50*'=' + ' client_socket.add_contact')
         print(f'Добавление контакта {contact}')
@@ -260,7 +267,7 @@ class ClientSocket(threading.Thread, QObject):
             self.database.add_contact(contact)
 
     def remove_contact(self, contact):
-        """ Удаляет клиента из списка контактов """
+        """Удаляет клиента из списка контактов."""
         logger.debug(f'Удаление контакта {contact}')
 
         with socket_lock:
@@ -271,8 +278,8 @@ class ClientSocket(threading.Thread, QObject):
             self.process_server_ans(get_message(self.socket))
             self.database.del_contact(contact)
 
-    # Функция закрытия соединения, отправляет сообщение о выходе.
     def socket_shutdown(self):
+        """Закрывает соединение, отправляет сообщение о выходе."""
         self.running = False
         req = self.create_message(action='exit')
         with socket_lock:
@@ -283,8 +290,8 @@ class ClientSocket(threading.Thread, QObject):
         logger.debug('Сокет завершает работу.')
         time.sleep(0.5)
 
-    # Функция отправки сообщения на сервер
     def send_message(self, destination, text):
+        """Функция отправки сообщения на сервер."""
         message = self.create_message(action='message',
                                       text=text,
                                       destination=destination)
@@ -304,6 +311,7 @@ class ClientSocket(threading.Thread, QObject):
             print(f'Отправлено сообщение для пользователя {destination}')
 
     def run(self):
+        """Основной процесс обработки сообщений с сервером."""
         logger.debug('Запущен процесс - приёмник сообщений с сервера.')
         print('Запущен процесс - приёмник сообщений с сервера.')
 

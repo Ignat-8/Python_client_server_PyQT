@@ -8,9 +8,22 @@ from pprint import pprint
 
 
 class ServerDB:
+    """Класс создания базы данных сервера."""
     Base = declarative_base()
 
     class AllUsers(Base):
+        """
+        Класс создания таблицы пользователей.
+        Содержит поля:
+        id - порядковый номер пользователя,
+        login - имя пользователя,
+        passwd_hash - пароль в виде хэша,
+        pubkey - публичный ключ для авторизации на сервере,
+        ip - адрес, с которого клиент подключился к серверу,
+        port - порт подключения клиента
+        is_active - признак активности клиента
+        last_conn - дата и время последнего подключения
+        """
         __tablename__ = 'users'
         id = Column(Integer, primary_key=True)
         login = Column(String, unique=True)
@@ -31,6 +44,13 @@ class ServerDB:
             self.last_conn = datetime.datetime.now()
 
     class UsersContacts(Base):
+        """
+        Класс создания таблицы контактов.
+        Содержит поля:
+        id - порядковый номер записи,
+        user_id - id пользователя для которого сохранен контакт,
+        contact - id пользователя с которым сохранен контакт
+        """
         __tablename__ = 'contacts'
         id = Column(Integer, primary_key=True)
         user_id = Column(Integer, ForeignKey('users.id'))
@@ -41,6 +61,15 @@ class ServerDB:
             self.contact = contact
 
     class LoginHistory(Base):
+        """
+        Класс создания таблицы истории подключения к серверу.
+        Таблица накопительная. Содержит столбцы:
+        id - порядковый номер записи,
+        user_id - id подключенного пользователя,
+        ip - адрес подключения пользователя,
+        port - порт подключения пользователя,
+        last_conn - дата и время подключения
+        """
         __tablename__ = 'login_history'
         id = Column(Integer, primary_key=True)
         user_id = Column(Integer, ForeignKey('users.id'))
@@ -55,6 +84,14 @@ class ServerDB:
             self.last_conn = last_conn
 
     class MessageHistory(Base):
+        """
+        Класс создания таблицы статистики переписки.
+        Содержит столбцы:
+        id - порядковый номер записи,
+        user_id - id пользователя,
+        cnt_sent - количество отправленных сообщений за всё время,
+        cnt_receive - количество принятых сообщений за всё время
+        """
         __tablename__ = 'message_history'
         id = Column(Integer, primary_key=True)
         user_id = Column(Integer, ForeignKey('users.id'))
@@ -67,6 +104,15 @@ class ServerDB:
             self.cnt_receive = 0
 
     class Messages(Base):
+        """
+        Класс создания таблицы истории переписки.
+        Таблица накопительная. Содержит столбцы:
+        id - порядковый номер записи,
+        sender - id пользователя отправителя,
+        destination - id пользователя получателя,
+        text - текст сообщения,
+        date - дата и время сохранения сообщения в БД
+        """
         __tablename__ = 'messages'
         id = Column(Integer, primary_key=True)
         sender = Column(Integer, ForeignKey('users.id'))
@@ -100,9 +146,12 @@ class ServerDB:
         self.session.query(self.AllUsers).update({'is_active': 0})
         self.session.commit()
 
-    # Функция выполняется при входе пользователя,
-    # фиксирует в базе сам факт входа
     def user_login(self, username, password, pubkey, ip_address, port):
+        """
+        Функция выполняется при входе пользователя,
+        фиксирует в базе факт входа и для первого входа создает
+        пользователя в базе данных.
+        """
         # Запрос в таблицу пользователей на наличие там
         # пользователя с таким именем
         result = self.session.query(self.AllUsers) \
@@ -143,8 +192,8 @@ class ServerDB:
         self.session.commit()
         return True  # успешная регистрация
 
-    # Функция фиксирует отключение пользователя
     def user_logout(self, username):
+        """Функция фиксирует отключение пользователя."""
         # Запрашиваем пользователя, что покидает нас
         # получаем запись из таблицы AllUsers
         # print(f'user_logout({username})')
@@ -155,8 +204,8 @@ class ServerDB:
         # Применяем изменения
         self.session.commit()
 
-    # Функция возвращает список активных пользователей
     def active_users_list(self):
+        """Функция возвращает список активных пользователей"""
         # Запрашиваем соединение таблиц и собираем тюплы
         # имя, адрес, порт, время.
         query = self.session.query(self.AllUsers.login,
@@ -168,9 +217,11 @@ class ServerDB:
         # Возвращаем список тюплов
         return query.all()
 
-    # Функция возвращает историю входов по пользователю
-    # или по всем пользователям
     def login_history(self, username=None):
+        """
+        Функция возвращает историю входов по пользователю
+        или по всем пользователям.
+        """
         # Запрашиваем историю входа
         query = self.session.query(self.AllUsers.login,
                                    self.LoginHistory.last_conn,
@@ -182,8 +233,8 @@ class ServerDB:
             query = query.filter(self.AllUsers.login == username)
         return query.all()
 
-    # Функция возвращает количество переданных и полученных сообщений
     def message_history(self):
+        """Функция возвращает статистику переданных и полученных сообщений."""
         query = self.session.query(
             self.AllUsers.login,
             self.AllUsers.last_conn,
@@ -193,10 +244,11 @@ class ServerDB:
         # Возвращаем список кортежей
         return query.all()
 
-    # Функция фиксирует передачу сообщения
-    # и делает соответствующие отметки в БД
     def process_message(self, message):
-        #
+        """
+        Функция фиксирует передачу сообщения
+        и делает соответствующие отметки в БД.
+        """
         sender = message['user']['account_name']
         destination = message['destination']
         text = message['text']
@@ -221,8 +273,8 @@ class ServerDB:
         self.session.add(row)
         self.session.commit()
 
-    # Функция возвращает всю переписку пользователя
     def get_messages(self, username):
+        """Функция возвращает всю переписку пользователя."""
         # Получаем ID пользователей
         user = self.session.query(self.AllUsers) \
                                 .filter_by(login=username) \
@@ -250,8 +302,8 @@ class ServerDB:
         # print(messages)
         return messages
 
-    # Функция добавляет контакт для пользователя.
     def add_contact(self, login, contact):
+        """Функция добавляет контакт для пользователя."""
         # Получаем ID пользователей
         user = self.session.query(self.AllUsers) \
                            .filter_by(login=login) \
@@ -275,8 +327,8 @@ class ServerDB:
         self.session.commit()
         return 1  # контакт добавлен
 
-    # Функция удаляет контакт из базы данных
     def del_contact(self, login, contact):
+        """Функция удаляет контакт из базы данных."""
         # Получаем ID пользователей
         user = self.session.query(self.AllUsers) \
                            .filter_by(login=login) \
@@ -305,6 +357,7 @@ class ServerDB:
         return 1
 
     def get_contacts(self, login):
+        """Функция возвращает список контактов пользователя."""
         # Запрашиваем указанного пользователя
         user = self.session.query(self.AllUsers) \
                            .filter_by(login=login) \
@@ -321,9 +374,8 @@ class ServerDB:
         # выбираем только имена пользователей и возвращаем их.
         return [contact[1] for contact in query.all()]
 
-    # Функция возвращает список известных пользователей
-    # со временем последнего входа.
     def get_userlist(self):
+        """Функция возвращает список известных пользователей."""
         query = self.session.query(
             self.AllUsers.login,
             self.AllUsers.last_conn,
