@@ -9,10 +9,12 @@ class TestCreatePresence(unittest.TestCase):
     def test_equal(self):
         self.assertEqual(create_presence()['action'], 'presence')
         self.assertEqual(create_presence()['user']['account_name'], 'Guest')
-        self.assertEqual(create_presence('User1')['user']['account_name'], 'User1')
+        self.assertEqual(
+            create_presence('User1')['user']['account_name'], 'User1')
 
     def test_not_equal(self):
-        self.assertNotEqual(create_presence('User1')['user']['account_name'], 'Guest')
+        self.assertNotEqual(
+            create_presence('User1')['user']['account_name'], 'Guest')
 
     def test_isinstance(self):
         self.assertIsInstance(create_presence(), dict)
@@ -20,7 +22,6 @@ class TestCreatePresence(unittest.TestCase):
         self.assertIsInstance(create_presence()['time'], float)
         self.assertIsInstance(create_presence()['user'], dict)
         self.assertIsInstance(create_presence()['user']['account_name'], str)
-
 
 
 class TestProcessAns(unittest.TestCase):
