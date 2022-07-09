@@ -45,7 +45,6 @@ class PortVerifi:
 
 
 class MyServer(Thread, metaclass=ServerMaker):
-    """Класс создания серверного приложения."""
     port = PortVerifi()
 
     def __init__(self, listen_address, listen_port, database):
