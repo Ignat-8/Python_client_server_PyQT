@@ -1,0 +1,7 @@
+setup.py
+client/client_run
+ib_message_client.egg-info/PKG-INFO
+ib_message_client.egg-info/SOURCES.txt
+ib_message_client.egg-info/dependency_links.txt
+ib_message_client.egg-info/requires.txt
+ib_message_client.egg-info/top_level.txt
