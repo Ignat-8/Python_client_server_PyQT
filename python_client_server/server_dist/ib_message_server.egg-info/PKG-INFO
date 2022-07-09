@@ -1,8 +1,8 @@
 Metadata-Version: 2.1
 Name: ib-message-server
-Version: 0.0.3
+Version: 0.0.8
 Summary: Server part of Server to client messanger
-Home-page: UNKNOWN
+Home-page: https://pypi.org/project/ib-message-server/
 Author: Igor Burakov
 Author-email: iburako8@yandex.ru
 License: UNKNOWN

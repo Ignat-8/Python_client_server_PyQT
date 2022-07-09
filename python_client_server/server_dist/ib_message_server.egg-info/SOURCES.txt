@@ -1,3 +1,4 @@
+README.rst
 setup.py
 ib_message_server.egg-info/PKG-INFO
 ib_message_server.egg-info/SOURCES.txt
@@ -11,13 +12,13 @@ server/common/decors.py
 server/common/errors.py
 server/common/settings.py
 server/common/utils.py
+server/logs/__init__.py
+server/logs/conf_server_log.py
 server/server/__init__.py
 server/server/core.py
 server/server/metaclasses.py
 server/server/server_db.py
 server/server/server_gui.py
-server/server/logs/__init__.py
-server/server/logs/conf_server_log.py
 server/unit_tests/__init__.py
 server/unit_tests/test_client.py
 server/unit_tests/test_server.py

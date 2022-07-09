@@ -2,5 +2,5 @@
 import sys
 import os
 PYTHON_PATH = sys.executable
-file_path = sys.path[-1] + '/server/core.py'
+file_path = sys.path[-1] + '/server/server/core.py'
 os.system(f'{PYTHON_PATH} {file_path}')
